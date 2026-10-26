@@ -376,5 +376,12 @@ window.UNIHUB_AR={
 "The most you plan to spend each month. Use 0 for no limit.": "أقصى ما تخطط لإنفاقه شهريًا. استخدم 0 لعدم وجود حد.",
 "How much you want to save in total. Use 0 for no target.": "إجمالي ما تريد ادخاره. استخدم 0 لعدم وجود هدف.",
 "Optional. A few words of detail.": "اختياري. بضع كلمات توضيحية.",
-"Optional. Anything else worth remembering.": "اختياري. أي شيء آخر تود تذكّره."
+"Optional. Anything else worth remembering.": "اختياري. أي شيء آخر تود تذكّره.",
+"Major": "التخصص",
+"Choose your major": "اختر تخصصك",
+"Select your major": "اختر التخصص",
+"Please choose a major.": "الرجاء اختيار التخصص.",
+"Computer Science (CS)": "علوم الحاسوب (CS)",
+"Information Technology (IT)": "تقنية المعلومات (IT)",
+"Your major decides which major-specific course appears in your deadlines and courses. Your other data is never deleted.": "يحدد تخصصك المقرر الخاص به الذي يظهر في المواعيد والمقررات. لا تُحذف أي من بياناتك الأخرى."
 };
