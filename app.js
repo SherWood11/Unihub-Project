@@ -1,270 +1,2524 @@
-
-const D=window.UNIHUB_DATA;
+const D = window.UNIHUB_DATA;
 /* ---- language + theme preferences (own keys, never touch saved app data) ---- */
-const AR=window.UNIHUB_AR||{},LK='unihub-lang',TK='unihub-theme',pref=(k,d,ok)=>{try{const v=localStorage.getItem(k);return ok.includes(v)?v:d}catch(e){return d}};
-let LANG=pref(LK,'ar',['ar','en']),THEME=pref(TK,'light',['light','dark']);
-const t=(k,...a)=>{const s=LANG=='ar'&&AR[k]!==undefined?AR[k]:k;return a.length?s.replace(/\{(\d+)\}/g,(m,i)=>a[i]??''):s},LOC=()=>LANG=='ar'?'ar-SD-u-ca-gregory-nu-latn':'en-GB';
-const K='unihub-v1',$=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let S=null;try{S=JSON.parse(localStorage.getItem(K))}catch(e){}
-S=S||{dl:D.dl,bk:D.bk,top:['',''],goals:['','',''],seen:[],days:1,rem1:1};
+const AR = window.UNIHUB_AR || {},
+  LK = "unihub-lang",
+  TK = "unihub-theme",
+  pref = (k, d, ok) => {
+    try {
+      const v = localStorage.getItem(k);
+      return ok.includes(v) ? v : d;
+    } catch (e) {
+      return d;
+    }
+  };
+let LANG = pref(LK, "ar", ["ar", "en"]),
+  THEME = pref(TK, "light", ["light", "dark"]);
+const t = (k, ...a) => {
+    const s = LANG == "ar" && AR[k] !== undefined ? AR[k] : k;
+    return a.length ? s.replace(/\{(\d+)\}/g, (m, i) => a[i] ?? "") : s;
+  },
+  LOC = () => (LANG == "ar" ? "ar-SD-u-ca-gregory-nu-latn" : "en-GB");
+const K = "unihub-v1",
+  $ = (s) => document.querySelector(s),
+  esc = (s) =>
+    String(s ?? "").replace(
+      /[&<>"']/g,
+      (c) =>
+        ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#39;",
+        })[c],
+    );
+let S = null;
+try {
+  S = JSON.parse(localStorage.getItem(K));
+} catch (e) {}
+S = S || {
+  dl: D.dl,
+  bk: D.bk,
+  top: ["", ""],
+  goals: ["", "", ""],
+  seen: [],
+  days: 1,
+  rem1: 1,
+};
 /* one-time migration: reminder window defaults to 1 day (any older saved value (3, 7, ...) becomes 1; other data untouched) */
-if(S.rem1!==1){S.days=1;S.rem1=1;try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}}
-const save=()=>{try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}};
+if (S.rem1 !== 1) {
+  S.days = 1;
+  S.rem1 = 1;
+  try {
+    localStorage.setItem(K, JSON.stringify(S));
+  } catch (e) {}
+}
+const save = () => {
+  try {
+    localStorage.setItem(K, JSON.stringify(S));
+  } catch (e) {}
+};
 /* one-time migration: library reduced to the two default books for existing users (bk only; all other saved data untouched) */
-if(S.bk1!==1){S.bk=JSON.parse(JSON.stringify(D.bk));S.bk1=1;save()}
-const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'),TODAY=iso(new Date());
-const addD=(s,n)=>{const d=new Date(s+'T00:00');d.setDate(d.getDate()+n);return iso(d)};
-const fmt=s=>new Date(s+'T00:00').toLocaleDateString(LOC(),{weekday:'short',day:'numeric',month:'short',year:'numeric'});
-const st=x=>x.done?'done':x.date<TODAY?'overdue':x.date<=addD(TODAY,7)?'soon':'upcoming',LB={done:'Completed',overdue:'Overdue',soon:'Due soon',upcoming:'Upcoming'};
-const uid=()=>'x'+Math.random().toString(36).slice(2,9),pct=(a,b)=>b?Math.round(100*a/b):0;
-const toast=t=>{const e=$('#toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',3200)};
+if (S.bk1 !== 1) {
+  S.bk = JSON.parse(JSON.stringify(D.bk));
+  S.bk1 = 1;
+  save();
+}
+const iso = (d) =>
+    d.getFullYear() +
+    "-" +
+    String(d.getMonth() + 1).padStart(2, "0") +
+    "-" +
+    String(d.getDate()).padStart(2, "0"),
+  TODAY = iso(new Date());
+const addD = (s, n) => {
+  const d = new Date(s + "T00:00");
+  d.setDate(d.getDate() + n);
+  return iso(d);
+};
+const fmt = (s) =>
+  new Date(s + "T00:00").toLocaleDateString(LOC(), {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+const st = (x) =>
+    x.done
+      ? "done"
+      : x.date < TODAY
+        ? "overdue"
+        : x.date <= addD(TODAY, 7)
+          ? "soon"
+          : "upcoming",
+  LB = {
+    done: "Completed",
+    overdue: "Overdue",
+    soon: "Due soon",
+    upcoming: "Upcoming",
+  };
+const uid = () => "x" + Math.random().toString(36).slice(2, 9),
+  pct = (a, b) => (b ? Math.round((100 * a) / b) : 0);
+const toast = (t) => {
+  const e = $("#toast");
+  e.textContent = t;
+  e.style.display = "block";
+  clearTimeout(toast.t);
+  toast.t = setTimeout(() => (e.style.display = "none"), 3200);
+};
 /* ---- major (CS / IT): only the major-specific course is shown; nothing is ever deleted, other-major items are just hidden ---- */
-const MJ={CS:'Numeric Computation I',IT:'Management Information Systems'},MJL={CS:'Computer Science (CS)',IT:'Information Technology (IT)'};
-const mjOf=x=>{if(x.college=='CS'||x.college=='IT')return x.college;const s=String(x.subject||'').trim().toLowerCase();return s=='numeric computation i'||s=='numeric computation i course'?'CS':s=='management information systems'||s=='management information system'?'IT':null};
-const V=()=>S.dl.filter(x=>{const m=mjOf(x);return !m||m===S.major});
+const MJ = {
+    CS: "Numeric Computation I",
+    IT: "Management Information Systems",
+  },
+  MJL = { CS: "Computer Science (CS)", IT: "Information Technology (IT)" };
+const mjOf = (x) => {
+  if (x.college == "CS" || x.college == "IT") return x.college;
+  const s = String(x.subject || "")
+    .trim()
+    .toLowerCase();
+  return s == "numeric computation i" || s == "numeric computation i course"
+    ? "CS"
+    : s == "management information systems" ||
+        s == "management information system"
+      ? "IT"
+      : null;
+};
+const V = () =>
+  S.dl.filter((x) => {
+    const m = mjOf(x);
+    return !m || m === S.major;
+  });
 /* idempotent one-time migration (saved data kept): valid major only; legacy subject names normalised; major-specific items tagged */
-if(S.major!=='CS'&&S.major!=='IT')S.major='';
-S.dl.forEach(x=>{const s=String(x.subject||'').trim().toLowerCase();if(s=='numeric computation i course'||s=='numeric computation i'){x.subject=MJ.CS;if(!x.college)x.college='CS'}else if(s=='management information system'||s=='management information systems'){x.subject=MJ.IT;if(!x.college)x.college='IT'}});
+if (S.major !== "CS" && S.major !== "IT") S.major = "";
+S.dl.forEach((x) => {
+  const s = String(x.subject || "")
+    .trim()
+    .toLowerCase();
+  if (s == "numeric computation i course" || s == "numeric computation i") {
+    x.subject = MJ.CS;
+    if (!x.college) x.college = "CS";
+  } else if (
+    s == "management information system" ||
+    s == "management information systems"
+  ) {
+    x.subject = MJ.IT;
+    if (!x.college) x.college = "IT";
+  }
+});
 save();
-const SUBS=()=>[...new Set(V().map(x=>x.subject).filter(Boolean))].sort(),TYPES=()=>[...new Set(V().map(x=>x.task).filter(Boolean))].sort();
-const bar=p=>`<div class="bar"><b style="width:${p}%"></b></div>`;
-S.gl=S.gl||[];S.hb=S.hb||[];S.hide=S.hide||{};S.bg=S.bg||{cats:['Food and groceries','Transportation','University fees and educational expenses','Books and learning materials','Internet and mobile data','Electricity and other utilities','Accommodation and rent','Personal expenses','Health and emergencies','Other expenses'].map(n=>({id:uid(),name:n,limit:0})),src:['Family support','Scholarship','Part-time work','Freelance programming','Other income'].map(n=>({id:uid(),name:n})),sv:[{id:uid(),name:'General savings',target:0}],tx:[],plan:{},due:[]};
-let P='home',F={q:'',sub:'',type:'',stat:'',sort:'date'},B={q:'',stat:''};
-function show(p){P=p;document.querySelectorAll('.nb[data-p]').forEach(b=>b.classList.toggle('on',b.dataset.p==p));$('#nl').classList.remove('open');try{location.hash=p}catch(e){}({home,deadlines,academics,library,assignments,books,goals,habits,budget,about})[p]();scrollTo(0,0)}
+const SUBS = () =>
+    [
+      ...new Set(
+        V()
+          .map((x) => x.subject)
+          .filter(Boolean),
+      ),
+    ].sort(),
+  TYPES = () =>
+    [
+      ...new Set(
+        V()
+          .map((x) => x.task)
+          .filter(Boolean),
+      ),
+    ].sort();
+const bar = (p) => `<div class="bar"><b style="width:${p}%"></b></div>`;
+S.gl = S.gl || [];
+S.hb = S.hb || [];
+S.hide = S.hide || {};
+S.bg = S.bg || {
+  cats: [
+    "Food and groceries",
+    "Transportation",
+    "University fees and educational expenses",
+    "Books and learning materials",
+    "Internet and mobile data",
+    "Electricity and other utilities",
+    "Accommodation and rent",
+    "Personal expenses",
+    "Health and emergencies",
+    "Other expenses",
+  ].map((n) => ({ id: uid(), name: n, limit: 0 })),
+  src: [
+    "Family support",
+    "Scholarship",
+    "Part-time work",
+    "Freelance programming",
+    "Other income",
+  ].map((n) => ({ id: uid(), name: n })),
+  sv: [{ id: uid(), name: "General savings", target: 0 }],
+  tx: [],
+  plan: {},
+  due: [],
+};
+let P = "home",
+  F = { q: "", sub: "", type: "", stat: "", sort: "date" },
+  B = { q: "", stat: "" };
+function show(p) {
+  P = p;
+  document
+    .querySelectorAll(".nb[data-p]")
+    .forEach((b) => b.classList.toggle("on", b.dataset.p == p));
+  navSet(false);
+  try {
+    location.hash = p;
+  } catch (e) {}
+  ({
+    home,
+    deadlines,
+    academics,
+    library,
+    assignments,
+    books,
+    goals,
+    habits,
+    budget,
+    about,
+  })[p]();
+  scrollTo(0, 0);
+}
 /* ---- calendar ---- */
-const z=s=>s.replace(/[-:]/g,''),tm=t=>z(t)+'00';
-const gcal=x=>'https://calendar.google.com/calendar/render?action=TEMPLATE&text='+encodeURIComponent(x.title)+'&dates='+(x.time?z(x.date)+'T'+tm(x.time)+'/'+z(x.date)+'T'+tm(x.end||x.time):z(x.date)+'/'+z(addD(x.date,1)))+'&ctz=Africa/Khartoum&details='+encodeURIComponent([x.subject,x.task,x.notes].filter(Boolean).join(' · '));
-const ie=s=>String(s||'').replace(/[\\;,]/g,'\\$&').replace(/\r?\n/g,'\\n');
-function ics(list){let o='BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//UniHub//EN\r\nX-WR-TIMEZONE:Africa/Khartoum\r\n';list.forEach(x=>{o+='BEGIN:VEVENT\r\nUID:'+x.id+'@unihub\r\nDTSTAMP:'+z(new Date().toISOString().slice(0,19))+'Z\r\n'+(x.time?'DTSTART:'+z(x.date)+'T'+tm(x.time)+'\r\nDTEND:'+z(x.date)+'T'+tm(x.end||x.time):'DTSTART;VALUE=DATE:'+z(x.date)+'\r\nDTEND;VALUE=DATE:'+z(addD(x.date,1)))+'\r\nSUMMARY:'+ie(x.title)+'\r\nDESCRIPTION:'+ie([x.subject,x.task,x.notes].filter(Boolean).join(' · '))+'\r\nEND:VEVENT\r\n'});return o+'END:VCALENDAR\r\n'}
-async function dlIcs(list){if(!list.length)return toast(t('Nothing to export.'));try{const b=new Blob([ics(list)],{type:'text/calendar'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='unihub-deadlines.ics';document.body.appendChild(a);a.click();a.remove();toast(t('Saved {0} events. Import the file in Google Calendar.',list.length))}catch(e){toast(e&&e.code==='declined'?t('Download cancelled.'):t('Could not save the file ({0}). Use the Google link on each row.',e&&e.code||'error'))}}
+const z = (s) => s.replace(/[-:]/g, ""),
+  tm = (t) => z(t) + "00";
+const gcal = (x) =>
+  "https://calendar.google.com/calendar/render?action=TEMPLATE&text=" +
+  encodeURIComponent(x.title) +
+  "&dates=" +
+  (x.time
+    ? z(x.date) + "T" + tm(x.time) + "/" + z(x.date) + "T" + tm(x.end || x.time)
+    : z(x.date) + "/" + z(addD(x.date, 1))) +
+  "&ctz=Africa/Khartoum&details=" +
+  encodeURIComponent([x.subject, x.task, x.notes].filter(Boolean).join(" · "));
+const ie = (s) =>
+  String(s || "")
+    .replace(/[\\;,]/g, "\\$&")
+    .replace(/\r?\n/g, "\\n");
+function ics(list) {
+  let o =
+    "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//UniHub//EN\r\nX-WR-TIMEZONE:Africa/Khartoum\r\n";
+  list.forEach((x) => {
+    o +=
+      "BEGIN:VEVENT\r\nUID:" +
+      x.id +
+      "@unihub\r\nDTSTAMP:" +
+      z(new Date().toISOString().slice(0, 19)) +
+      "Z\r\n" +
+      (x.time
+        ? "DTSTART:" +
+          z(x.date) +
+          "T" +
+          tm(x.time) +
+          "\r\nDTEND:" +
+          z(x.date) +
+          "T" +
+          tm(x.end || x.time)
+        : "DTSTART;VALUE=DATE:" +
+          z(x.date) +
+          "\r\nDTEND;VALUE=DATE:" +
+          z(addD(x.date, 1))) +
+      "\r\nSUMMARY:" +
+      ie(x.title) +
+      "\r\nDESCRIPTION:" +
+      ie([x.subject, x.task, x.notes].filter(Boolean).join(" · ")) +
+      "\r\nEND:VEVENT\r\n";
+  });
+  return o + "END:VCALENDAR\r\n";
+}
+async function dlIcs(list) {
+  if (!list.length) return toast(t("Nothing to export."));
+  try {
+    const b = new Blob([ics(list)], { type: "text/calendar" }),
+      a = document.createElement("a");
+    a.href = URL.createObjectURL(b);
+    a.download = "unihub-deadlines.ics";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    toast(
+      t("Saved {0} events. Import the file in Google Calendar.", list.length),
+    );
+  } catch (e) {
+    toast(
+      e && e.code === "declined"
+        ? t("Download cancelled.")
+        : t(
+            "Could not save the file ({0}). Use the Google link on each row.",
+            (e && e.code) || "error",
+          ),
+    );
+  }
+}
 /* ---- date picker: one control per date field, bilingual, RTL-aware, theme-aware ---- */
-const RTL=()=>LANG=='ar',ICAL='<svg class="ci" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>';
-const mNames=()=>[...Array(12)].map((_,i)=>new Date(2026,i,1).toLocaleDateString(LOC(),{month:'long'})),dNames=()=>[...Array(7)].map((_,i)=>new Date(2026,0,4+i).toLocaleDateString(LOC(),{weekday:'short'}));
-const mlab=v=>new Date(v+'-01T00:00').toLocaleDateString(LOC(),{month:'long',year:'numeric'});
-const dpText=(v,m)=>v?(m=='month'?mlab(v):new Date(v+'T00:00').toLocaleDateString(LOC(),{day:'numeric',month:'short',year:'numeric'})):t('Select date');
-const dpField=(k,v,mode,o={})=>`<div class="dp${o.abs?' abs':''}" data-mode="${mode}" data-clear="${o.clear?1:0}"><input type="hidden" ${k?`data-k="${k}"`:''} ${o.id?`id="${o.id}"`:''} value="${esc(v)}"><button type="button" class="dpb" aria-haspopup="dialog" aria-expanded="false" data-lab="${esc(o.label||'')}"><span class="dpv">${esc(dpText(v,mode))}</span>${ICAL}</button><div class="dpp" role="dialog" hidden></div></div>`;
-let escT=0;
-function dpWire(root){root.querySelectorAll('.dp').forEach(dp=>{if(dp._w)return;dp._w=1;
-const inp=dp.querySelector('input'),btn=dp.querySelector('.dpb'),pop=dp.querySelector('.dpp'),mode=dp.dataset.mode,clr=dp.dataset.clear=='1',lab=btn.dataset.lab;let vy,vm,foc;
-const sync=()=>{const x=dpText(inp.value,mode);btn.querySelector('.dpv').textContent=x;btn.setAttribute('aria-label',(lab?lab+': ':'')+x)};
-const close=()=>{pop.hidden=true;btn.setAttribute('aria-expanded','false')};
-const set=v=>{inp.value=v;sync();close();inp.dispatchEvent(new Event('change',{bubbles:true}));btn.focus()};
-const yrs=()=>{const y0=Math.min(vy,2020),y1=Math.max(vy,2036);let o='';for(let y=y0;y<=y1;y++)o+=`<option ${y==vy?'selected':''}>${y}</option>`;return`<select class="dpy" aria-label="${t('Year')}">${o}</select>`};
-const nav=(s,l)=>`<button type="button" class="dpn" data-s="${s}" aria-label="${l}">${(s<0)==RTL()?'›':'‹'}</button>`;
-const draw=()=>{const mn=mNames(),sel=inp.value;let h;
-if(mode=='month')h=`<div class="dph">${nav(-1,t('Previous year'))}${yrs()}${nav(1,t('Next year'))}</div><div class="dpg m">${mn.map((n,i)=>{const v=vy+'-'+String(i+1).padStart(2,'0');return`<button type="button" class="dd ${v==sel?'sel':''} ${v==TODAY.slice(0,7)?'td':''}" data-m="${v}" aria-pressed="${v==sel}">${n}</button>`}).join('')}</div>`;
-else{const first=RTL()?6:1,dn=dNames(),off=(new Date(vy,vm,1).getDay()-first+7)%7;
-h=`<div class="dph">${nav(-1,t('Previous month'))}<select class="dpm" aria-label="${t('Month')}">${mn.map((n,i)=>`<option value="${i}" ${i==vm?'selected':''}>${n}</option>`).join('')}</select>${yrs()}${nav(1,t('Next month'))}</div><div class="dpg">${[...Array(7)].map((_,i)=>`<span class="dw">${dn[(first+i)%7]}</span>`).join('')}${[...Array(42)].map((_,i)=>{const d=new Date(vy,vm,i-off+1),v=iso(d);return`<button type="button" class="dd ${d.getMonth()!=vm?'out':''} ${v==sel?'sel':''} ${v==TODAY?'td':''}" data-d="${v}" tabindex="${v==foc?0:-1}" aria-pressed="${v==sel}" aria-label="${d.toLocaleDateString(LOC(),{weekday:'long',day:'numeric',month:'long',year:'numeric'})}">${d.getDate()}</button>`}).join('')}</div><div class="dpf"><button type="button" class="btn s sm" data-a="today">${t('Today')}</button>${clr?`<button type="button" class="btn s sm" data-a="clear">${t('Clear')}</button>`:''}</div>`}
-pop.innerHTML=h};
-const open=()=>{document.querySelectorAll('.dp').forEach(o=>o!==dp&&o._close&&o._close());const b=inp.value||TODAY;vy=+b.slice(0,4);vm=+b.slice(5,7)-1;foc=mode=='month'?'':(inp.value||TODAY);draw();pop.hidden=false;btn.setAttribute('aria-expanded','true')};
-dp._close=close;sync();
-btn.onclick=()=>pop.hidden?open():close();
-pop.onclick=e=>{const b=e.target.closest('button');if(!b)return;const d=b.dataset;if(d.d||d.m!==undefined)return set(d.d||d.m);if(d.a)return set(d.a=='today'?(mode=='month'?TODAY.slice(0,7):TODAY):'');if(d.s){const n=+d.s;if(mode=='month')vy+=n;else{vm+=n;if(vm<0){vm=11;vy--}if(vm>11){vm=0;vy++}}draw();pop.querySelector('.dpn[data-s="'+d.s+'"]').focus()}};
-pop.onchange=e=>{e.stopPropagation();const c=e.target.className;if(c=='dpm')vm=+e.target.value;else if(c=='dpy')vy=+e.target.value;else return;draw();pop.querySelector('.'+c).focus()};
-dp.onkeydown=e=>{if(e.key=='Escape'&&!pop.hidden){e.preventDefault();e.stopPropagation();escT=Date.now();close();btn.focus();return}
-const dd=e.target.dataset&&e.target.dataset.d;if(!dd)return;const dx={ArrowLeft:RTL()?1:-1,ArrowRight:RTL()?-1:1,ArrowUp:-7,ArrowDown:7}[e.key],pm={PageUp:-1,PageDown:1}[e.key];if(!dx&&!pm)return;e.preventDefault();const x=new Date(dd+'T00:00');if(dx)x.setDate(x.getDate()+dx);else x.setMonth(x.getMonth()+pm);foc=iso(x);vy=x.getFullYear();vm=x.getMonth();draw();pop.querySelector('[data-d="'+foc+'"]').focus()};
-})}
-document.addEventListener('click',e=>document.querySelectorAll('.dp').forEach(d=>{if(d._close&&!e.composedPath().includes(d))d._close()}));
+const RTL = () => LANG == "ar",
+  ICAL =
+    '<svg class="ci" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>';
+const mNames = () =>
+    [...Array(12)].map((_, i) =>
+      new Date(2026, i, 1).toLocaleDateString(LOC(), { month: "long" }),
+    ),
+  dNames = () =>
+    [...Array(7)].map((_, i) =>
+      new Date(2026, 0, 4 + i).toLocaleDateString(LOC(), { weekday: "short" }),
+    );
+const mlab = (v) =>
+  new Date(v + "-01T00:00").toLocaleDateString(LOC(), {
+    month: "long",
+    year: "numeric",
+  });
+const dpText = (v, m) =>
+  v
+    ? m == "month"
+      ? mlab(v)
+      : new Date(v + "T00:00").toLocaleDateString(LOC(), {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        })
+    : t("Select date");
+const dpField = (k, v, mode, o = {}) =>
+  `<div class="dp${o.abs ? " abs" : ""}" data-mode="${mode}" data-clear="${o.clear ? 1 : 0}"><input type="hidden" ${k ? `data-k="${k}"` : ""} ${o.id ? `id="${o.id}"` : ""} value="${esc(v)}"><button type="button" class="dpb" aria-haspopup="dialog" aria-expanded="false" data-lab="${esc(o.label || "")}"><span class="dpv">${esc(dpText(v, mode))}</span>${ICAL}</button><div class="dpp" role="dialog" hidden></div></div>`;
+let escT = 0;
+function dpWire(root) {
+  root.querySelectorAll(".dp").forEach((dp) => {
+    if (dp._w) return;
+    dp._w = 1;
+    const inp = dp.querySelector("input"),
+      btn = dp.querySelector(".dpb"),
+      pop = dp.querySelector(".dpp"),
+      mode = dp.dataset.mode,
+      clr = dp.dataset.clear == "1",
+      lab = btn.dataset.lab;
+    let vy, vm, foc;
+    const sync = () => {
+      const x = dpText(inp.value, mode);
+      btn.querySelector(".dpv").textContent = x;
+      btn.setAttribute("aria-label", (lab ? lab + ": " : "") + x);
+    };
+    const close = () => {
+      pop.hidden = true;
+      btn.setAttribute("aria-expanded", "false");
+    };
+    const set = (v) => {
+      inp.value = v;
+      sync();
+      close();
+      inp.dispatchEvent(new Event("change", { bubbles: true }));
+      btn.focus();
+    };
+    const yrs = () => {
+      const y0 = Math.min(vy, 2020),
+        y1 = Math.max(vy, 2036);
+      let o = "";
+      for (let y = y0; y <= y1; y++)
+        o += `<option ${y == vy ? "selected" : ""}>${y}</option>`;
+      return `<select class="dpy" aria-label="${t("Year")}">${o}</select>`;
+    };
+    const nav = (s, l) =>
+      `<button type="button" class="dpn" data-s="${s}" aria-label="${l}">${s < 0 == RTL() ? "›" : "‹"}</button>`;
+    const draw = () => {
+      const mn = mNames(),
+        sel = inp.value;
+      let h;
+      if (mode == "month")
+        h = `<div class="dph">${nav(-1, t("Previous year"))}${yrs()}${nav(1, t("Next year"))}</div><div class="dpg m">${mn
+          .map((n, i) => {
+            const v = vy + "-" + String(i + 1).padStart(2, "0");
+            return `<button type="button" class="dd ${v == sel ? "sel" : ""} ${v == TODAY.slice(0, 7) ? "td" : ""}" data-m="${v}" aria-pressed="${v == sel}">${n}</button>`;
+          })
+          .join("")}</div>`;
+      else {
+        const first = RTL() ? 6 : 1,
+          dn = dNames(),
+          off = (new Date(vy, vm, 1).getDay() - first + 7) % 7;
+        h = `<div class="dph">${nav(-1, t("Previous month"))}<select class="dpm" aria-label="${t("Month")}">${mn.map((n, i) => `<option value="${i}" ${i == vm ? "selected" : ""}>${n}</option>`).join("")}</select>${yrs()}${nav(1, t("Next month"))}</div><div class="dpg">${[...Array(7)].map((_, i) => `<span class="dw">${dn[(first + i) % 7]}</span>`).join("")}${[
+          ...Array(42),
+        ]
+          .map((_, i) => {
+            const d = new Date(vy, vm, i - off + 1),
+              v = iso(d);
+            return `<button type="button" class="dd ${d.getMonth() != vm ? "out" : ""} ${v == sel ? "sel" : ""} ${v == TODAY ? "td" : ""}" data-d="${v}" tabindex="${v == foc ? 0 : -1}" aria-pressed="${v == sel}" aria-label="${d.toLocaleDateString(LOC(), { weekday: "long", day: "numeric", month: "long", year: "numeric" })}">${d.getDate()}</button>`;
+          })
+          .join(
+            "",
+          )}</div><div class="dpf"><button type="button" class="btn s sm" data-a="today">${t("Today")}</button>${clr ? `<button type="button" class="btn s sm" data-a="clear">${t("Clear")}</button>` : ""}</div>`;
+      }
+      pop.innerHTML = h;
+    };
+    const open = () => {
+      document
+        .querySelectorAll(".dp")
+        .forEach((o) => o !== dp && o._close && o._close());
+      const b = inp.value || TODAY;
+      vy = +b.slice(0, 4);
+      vm = +b.slice(5, 7) - 1;
+      foc = mode == "month" ? "" : inp.value || TODAY;
+      draw();
+      pop.hidden = false;
+      btn.setAttribute("aria-expanded", "true");
+    };
+    dp._close = close;
+    sync();
+    btn.onclick = () => (pop.hidden ? open() : close());
+    pop.onclick = (e) => {
+      const b = e.target.closest("button");
+      if (!b) return;
+      const d = b.dataset;
+      if (d.d || d.m !== undefined) return set(d.d || d.m);
+      if (d.a)
+        return set(
+          d.a == "today" ? (mode == "month" ? TODAY.slice(0, 7) : TODAY) : "",
+        );
+      if (d.s) {
+        const n = +d.s;
+        if (mode == "month") vy += n;
+        else {
+          vm += n;
+          if (vm < 0) {
+            vm = 11;
+            vy--;
+          }
+          if (vm > 11) {
+            vm = 0;
+            vy++;
+          }
+        }
+        draw();
+        pop.querySelector('.dpn[data-s="' + d.s + '"]').focus();
+      }
+    };
+    pop.onchange = (e) => {
+      e.stopPropagation();
+      const c = e.target.className;
+      if (c == "dpm") vm = +e.target.value;
+      else if (c == "dpy") vy = +e.target.value;
+      else return;
+      draw();
+      pop.querySelector("." + c).focus();
+    };
+    dp.onkeydown = (e) => {
+      if (e.key == "Escape" && !pop.hidden) {
+        e.preventDefault();
+        e.stopPropagation();
+        escT = Date.now();
+        close();
+        btn.focus();
+        return;
+      }
+      const dd = e.target.dataset && e.target.dataset.d;
+      if (!dd) return;
+      const dx = {
+          ArrowLeft: RTL() ? 1 : -1,
+          ArrowRight: RTL() ? -1 : 1,
+          ArrowUp: -7,
+          ArrowDown: 7,
+        }[e.key],
+        pm = { PageUp: -1, PageDown: 1 }[e.key];
+      if (!dx && !pm) return;
+      e.preventDefault();
+      const x = new Date(dd + "T00:00");
+      if (dx) x.setDate(x.getDate() + dx);
+      else x.setMonth(x.getMonth() + pm);
+      foc = iso(x);
+      vy = x.getFullYear();
+      vm = x.getMonth();
+      draw();
+      pop.querySelector('[data-d="' + foc + '"]').focus();
+    };
+  });
+}
+document.addEventListener("click", (e) =>
+  document.querySelectorAll(".dp").forEach((d) => {
+    if (d._close && !e.composedPath().includes(d)) d._close();
+  }),
+);
 /* ---- modal ---- */
-const HINTS={'title8.title':'Short name of the task, e.g. “Database assignment 2”.','title8.subject':'The course this belongs to.','title8.task':'The kind of activity: lecture, exam, assignment…','title8.date':'The day it is due or takes place.','title8.time':'Optional. When it starts, e.g. 11:30.','title8.end':'Optional. When it ends. Needs a start time.','title8.priority':'How urgent it is. “Normal” is fine for most items.','title8.notes':'Optional. Room, instructor, links or reminders.',
-'name7.name':'The book’s title, e.g. “Atomic Habits”.','name7.author':'Who wrote it, e.g. “Clear, James”.','name7.genre':'Optional. One or more genres, e.g. Fantasy, Mystery.','name7.status':'Where you are with this book.','name7.pages':'Total number of pages in the book.','name7.cur':'The page you have reached so far.','name7.rating':'Your rating from 0 (none) to 5 stars.',
-'title10.title':'What you want to achieve, e.g. “Finish the semester project”.','title10.desc':'Optional. Why it matters or what success looks like.','title10.cat':'The area of life this goal belongs to.','title10.pri':'How important it is compared with your other goals.','title10.start':'The day you begin working on it.','title10.target':'Optional. The date you want to finish by.','title10.status':'Your current stage.','title10.prog':'A number from 0 to 100. Ignored when you add milestones.','title10.ms':'Optional. One small step per line, e.g. “Write the outline”.',
-'name9.name':'The routine you want to build, e.g. “Study for 1 hour”.','name9.cat':'The type of habit.','name9.freq':'How often you plan to do it.','name9.days':'Only for “Selected days”. Type the days, e.g. Mon, Wed, Fri.','name9.start':'The first day you want to track it.','name9.target':'Optional. A date to reach your streak goal by.','name9.remind':'Optional. Adds a reminder to the bell at this time.',
-'type6.type':'Is this money coming in, going out, or being saved?','type6.date':'The day the money moved.','type6.amt':'The amount in Sudanese pounds, e.g. 15000.','type6.cat':'Pick the category, income source or savings goal. It must match the type.','type6.desc':'A short label, e.g. “Bus fare”.','type6.notes':'Optional. Any extra details.',
-'title3.title':'What you need to pay, e.g. “Semester fees”.','title3.date':'The day the payment is due.','title3.amt':'How much it costs, in Sudanese pounds.','b1.b':'The total you plan to spend this month, e.g. 120000.',
-'*.name':'A short, clear name, e.g. “Food” or “Laptop fund”.','*.limit':'The most you plan to spend each month. Use 0 for no limit.','*.target':'How much you want to save in total. Use 0 for no target.','*.desc':'Optional. A few words of detail.','*.notes':'Optional. Anything else worth remembering.'};
-function modal(title,fields,v,ok){const d=$('#dg'),sig=fields[0].k+fields.length,hn=f=>HINTS[sig+'.'+f.k]||HINTS['*.'+f.k];d.innerHTML=`<h3>${esc(title)}</h3>`+fields.map(f=>`<label${f.t=='date'?'':` for="f-${f.k}"`}>${f.l}</label>`+(hn(f)?`<div class="hint" id="h-${f.k}">${esc(t(hn(f)))}</div>`:'')+(f.t=='select'?`<select id="f-${f.k}" data-k="${f.k}">${f.o.map(o=>{const a=Array.isArray(o),ov=a?o[0]:o;return`<option value="${esc(ov)}" ${ov==v[f.k]?'selected':''}>${esc(a?o[1]:f.tr?t(o):o)}</option>`}).join('')}</select>`:f.t=='area'?`<textarea id="f-${f.k}" rows="3" data-k="${f.k}">${esc(v[f.k])}</textarea>`:f.t=='date'?dpField(f.k,v[f.k]||'','date',{clear:!f.req,label:f.l}):`<input id="f-${f.k}" type="${f.t||'text'}" data-k="${f.k}" value="${esc(v[f.k])}" ${f.n?'min=0':''}>`)).join('')+'<p class="mu er" id="er" role="alert"></p><div class="acts"><button class="btn s" id="cx" type="button">'+t('Cancel')+'</button><button class="btn" id="sv" type="button">'+t('Save')+'</button></div>';
-$('#cx').onclick=()=>d.close();$('#sv').onclick=()=>{const o={};d.querySelectorAll('[data-k]').forEach(e=>o[e.dataset.k]=e.value.trim());const m=ok(o);if(m)$('#er').textContent=m;else d.close()};d.oncancel=e=>{if(Date.now()-escT<250)e.preventDefault()};dpWire(d);fields.forEach(f=>{if(!hn(f))return;const e=d.querySelector('[data-k="'+f.k+'"]'),c=f.t=='date'?e.parentNode.querySelector('.dpb'):e;c.setAttribute('aria-describedby','h-'+f.k)});d.showModal()}
-function editDl(id){const x=S.dl.find(y=>y.id==id)||{};modal(id?t('Edit deadline'):t('Add deadline'),[{k:'title',l:t('Title')},{k:'subject',l:t('Course'),t:'select',o:['',...SUBS()]},{k:'task',l:t('Type'),t:'select',tr:1,o:[...new Set(['Lecture','Tutorial','Practical','Assignment','Project','Exam','Revision','Feedback',...TYPES(),'Other'])]},{k:'date',l:t('Due date'),t:'date',req:1},{k:'time',l:t('Start time (optional)'),t:'time'},{k:'end',l:t('End time (optional)'),t:'time'},{k:'priority',l:t('Priority'),t:'select',tr:1,o:['Normal','High','Low']},{k:'notes',l:t('Notes'),t:'area'}],{priority:'Normal',task:'Assignment',...x},o=>{if(!o.title)return t('Please enter a title.');if(!o.date)return t('Please choose a due date.');if(o.end&&!o.time)return t('Add a start time or clear the end time.');if(id)Object.assign(x,o);else S.dl.push({id:uid(),done:false,...o});save();show(P);toast(t('Saved.'))})}
-function editBk(id){const x=S.bk.find(y=>y.id==id)||{};modal(id?t('Edit book'):t('Add book'),[{k:'name',l:t('Title')},{k:'author',l:t('Author')},{k:'genre',l:t('Genre')},{k:'status',l:t('Status'),t:'select',tr:1,o:['TBR','Current Reading','Read','Not Read']},{k:'pages',l:t('Pages'),t:'number',n:1},{k:'cur',l:t('Current page'),t:'number',n:1},{k:'rating',l:t('Rating (0–5)'),t:'select',o:['0','1','2','3','4','5']}],{status:'TBR',rating:'0',...x,rating:String(x.rating||0)},o=>{if(!o.name)return t('Please enter a title.');o.pages=+o.pages||0;o.cur=Math.min(+o.cur||0,o.pages||1e9);o.rating=+o.rating;if(id)Object.assign(x,o);else S.bk.push({id:uid(),...o});save();show(P);toast(t('Saved.'))})}
+const HINTS = {
+  "title8.title": "Short name of the task, e.g. “Database assignment 2”.",
+  "title8.subject": "The course this belongs to.",
+  "title8.task": "The kind of activity: lecture, exam, assignment…",
+  "title8.date": "The day it is due or takes place.",
+  "title8.time": "Optional. When it starts, e.g. 11:30.",
+  "title8.end": "Optional. When it ends. Needs a start time.",
+  "title8.priority": "How urgent it is. “Normal” is fine for most items.",
+  "title8.notes": "Optional. Room, instructor, links or reminders.",
+  "name7.name": "The book’s title, e.g. “Atomic Habits”.",
+  "name7.author": "Who wrote it, e.g. “Clear, James”.",
+  "name7.genre": "Optional. One or more genres, e.g. Fantasy, Mystery.",
+  "name7.status": "Where you are with this book.",
+  "name7.pages": "Total number of pages in the book.",
+  "name7.cur": "The page you have reached so far.",
+  "name7.rating": "Your rating from 0 (none) to 5 stars.",
+  "title10.title":
+    "What you want to achieve, e.g. “Finish the semester project”.",
+  "title10.desc": "Optional. Why it matters or what success looks like.",
+  "title10.cat": "The area of life this goal belongs to.",
+  "title10.pri": "How important it is compared with your other goals.",
+  "title10.start": "The day you begin working on it.",
+  "title10.target": "Optional. The date you want to finish by.",
+  "title10.status": "Your current stage.",
+  "title10.prog": "A number from 0 to 100. Ignored when you add milestones.",
+  "title10.ms": "Optional. One small step per line, e.g. “Write the outline”.",
+  "name9.name": "The routine you want to build, e.g. “Study for 1 hour”.",
+  "name9.cat": "The type of habit.",
+  "name9.freq": "How often you plan to do it.",
+  "name9.days": "Only for “Selected days”. Type the days, e.g. Mon, Wed, Fri.",
+  "name9.start": "The first day you want to track it.",
+  "name9.target": "Optional. A date to reach your streak goal by.",
+  "name9.remind": "Optional. Adds a reminder to the bell at this time.",
+  "type6.type": "Is this money coming in, going out, or being saved?",
+  "type6.date": "The day the money moved.",
+  "type6.amt": "The amount in Sudanese pounds, e.g. 15000.",
+  "type6.cat":
+    "Pick the category, income source or savings goal. It must match the type.",
+  "type6.desc": "A short label, e.g. “Bus fare”.",
+  "type6.notes": "Optional. Any extra details.",
+  "title3.title": "What you need to pay, e.g. “Semester fees”.",
+  "title3.date": "The day the payment is due.",
+  "title3.amt": "How much it costs, in Sudanese pounds.",
+  "b1.b": "The total you plan to spend this month, e.g. 120000.",
+  "*.name": "A short, clear name, e.g. “Food” or “Laptop fund”.",
+  "*.limit": "The most you plan to spend each month. Use 0 for no limit.",
+  "*.target": "How much you want to save in total. Use 0 for no target.",
+  "*.desc": "Optional. A few words of detail.",
+  "*.notes": "Optional. Anything else worth remembering.",
+};
+function modal(title, fields, v, ok) {
+  const d = $("#dg"),
+    sig = fields[0].k + fields.length,
+    hn = (f) => HINTS[sig + "." + f.k] || HINTS["*." + f.k];
+  d.innerHTML =
+    `<h3>${esc(title)}</h3>` +
+    fields
+      .map(
+        (f) =>
+          `<label${f.t == "date" ? "" : ` for="f-${f.k}"`}>${f.l}</label>` +
+          (hn(f)
+            ? `<div class="hint" id="h-${f.k}">${esc(t(hn(f)))}</div>`
+            : "") +
+          (f.t == "select"
+            ? `<select id="f-${f.k}" data-k="${f.k}">${f.o
+                .map((o) => {
+                  const a = Array.isArray(o),
+                    ov = a ? o[0] : o;
+                  return `<option value="${esc(ov)}" ${ov == v[f.k] ? "selected" : ""}>${esc(a ? o[1] : f.tr ? t(o) : o)}</option>`;
+                })
+                .join("")}</select>`
+            : f.t == "area"
+              ? `<textarea id="f-${f.k}" rows="3" data-k="${f.k}">${esc(v[f.k])}</textarea>`
+              : f.t == "date"
+                ? dpField(f.k, v[f.k] || "", "date", {
+                    clear: !f.req,
+                    label: f.l,
+                  })
+                : `<input id="f-${f.k}" type="${f.t || "text"}" data-k="${f.k}" value="${esc(v[f.k])}" ${f.n ? "min=0" : ""}>`),
+      )
+      .join("") +
+    '<p class="mu er" id="er" role="alert"></p><div class="acts"><button class="btn s" id="cx" type="button">' +
+    t("Cancel") +
+    '</button><button class="btn" id="sv" type="button">' +
+    t("Save") +
+    "</button></div>";
+  $("#cx").onclick = () => d.close();
+  $("#sv").onclick = () => {
+    const o = {};
+    d.querySelectorAll("[data-k]").forEach(
+      (e) => (o[e.dataset.k] = e.value.trim()),
+    );
+    const m = ok(o);
+    if (m) $("#er").textContent = m;
+    else d.close();
+  };
+  d.oncancel = (e) => {
+    if (Date.now() - escT < 250) e.preventDefault();
+  };
+  dpWire(d);
+  fields.forEach((f) => {
+    if (!hn(f)) return;
+    const e = d.querySelector('[data-k="' + f.k + '"]'),
+      c = f.t == "date" ? e.parentNode.querySelector(".dpb") : e;
+    c.setAttribute("aria-describedby", "h-" + f.k);
+  });
+  d.showModal();
+}
+function editDl(id) {
+  const x = S.dl.find((y) => y.id == id) || {};
+  modal(
+    id ? t("Edit deadline") : t("Add deadline"),
+    [
+      { k: "title", l: t("Title") },
+      { k: "subject", l: t("Course"), t: "select", o: ["", ...SUBS()] },
+      {
+        k: "task",
+        l: t("Type"),
+        t: "select",
+        tr: 1,
+        o: [
+          ...new Set([
+            "Lecture",
+            "Tutorial",
+            "Practical",
+            "Assignment",
+            "Project",
+            "Exam",
+            "Revision",
+            "Feedback",
+            ...TYPES(),
+            "Other",
+          ]),
+        ],
+      },
+      { k: "date", l: t("Due date"), t: "date", req: 1 },
+      { k: "time", l: t("Start time (optional)"), t: "time" },
+      { k: "end", l: t("End time (optional)"), t: "time" },
+      {
+        k: "priority",
+        l: t("Priority"),
+        t: "select",
+        tr: 1,
+        o: ["Normal", "High", "Low"],
+      },
+      { k: "notes", l: t("Notes"), t: "area" },
+    ],
+    { priority: "Normal", task: "Assignment", ...x },
+    (o) => {
+      if (!o.title) return t("Please enter a title.");
+      if (!o.date) return t("Please choose a due date.");
+      if (o.end && !o.time) return t("Add a start time or clear the end time.");
+      if (id) Object.assign(x, o);
+      else S.dl.push({ id: uid(), done: false, ...o });
+      save();
+      show(P);
+      toast(t("Saved."));
+    },
+  );
+}
+function editBk(id) {
+  const x = S.bk.find((y) => y.id == id) || {};
+  modal(
+    id ? t("Edit book") : t("Add book"),
+    [
+      { k: "name", l: t("Title") },
+      { k: "author", l: t("Author") },
+      { k: "genre", l: t("Genre") },
+      {
+        k: "status",
+        l: t("Status"),
+        t: "select",
+        tr: 1,
+        o: ["TBR", "Current Reading", "Read", "Not Read"],
+      },
+      { k: "pages", l: t("Pages"), t: "number", n: 1 },
+      { k: "cur", l: t("Current page"), t: "number", n: 1 },
+      {
+        k: "rating",
+        l: t("Rating (0–5)"),
+        t: "select",
+        o: ["0", "1", "2", "3", "4", "5"],
+      },
+    ],
+    { status: "TBR", rating: "0", ...x, rating: String(x.rating || 0) },
+    (o) => {
+      if (!o.name) return t("Please enter a title.");
+      o.pages = +o.pages || 0;
+      o.cur = Math.min(+o.cur || 0, o.pages || 1e9);
+      o.rating = +o.rating;
+      if (id) Object.assign(x, o);
+      else S.bk.push({ id: uid(), ...o });
+      save();
+      show(P);
+      toast(t("Saved."));
+    },
+  );
+}
 /* ---- views ---- */
-const rowDl=x=>`<div class="row"><input type="checkbox" ${x.done?'checked':''} data-t="${x.id}" aria-label="${t('Done')}"><div><b>${esc(x.title)}</b><div class="mu">${esc(x.subject)} · ${fmt(x.date)}${x.time?' · '+x.time:''}</div></div><span class="tg ${st(x)}">${t(LB[st(x)])}</span></div>`;
-function wire(){document.querySelectorAll('[data-t]:not(#tbd [data-t])').forEach(e=>e.onchange=()=>{const x=S.dl.find(y=>y.id==e.dataset.t);x.done=e.checked;x.doneAt=e.checked?TODAY:'';save();show(P)});document.querySelectorAll('[data-add]').forEach(e=>e.onclick=()=>e.dataset.add=='b'?editBk():editDl())}
-function home(){const o=V().filter(x=>st(x)=='overdue').length,dn=V().filter(x=>x.done).length,wk=V().filter(x=>st(x)=='soon').length,nx=V().filter(x=>!x.done).sort((a,b)=>a.date.localeCompare(b.date)||(a.time||'').localeCompare(b.time||'')).slice(0,6);
-const cs=SUBS().map(s=>{const l=V().filter(x=>x.subject==s);return`<div style="margin:9px 0"><div style="display:flex;justify-content:space-between"><span>${esc(s)}</span><span class="mu">${l.filter(x=>x.done).length}/${l.length}</span></div>${bar(pct(l.filter(x=>x.done).length,l.length))}</div>`}).join('');
-$('#m').innerHTML=`${cv('home',t('Welcome to UniHub'),t('Today is {0}. Here is where your studies stand.',fmt(TODAY)))}
-<div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0"><button class="btn" data-add="d">${t('＋ Add deadline')}</button><button class="btn s" data-add="b">${t('＋ Add book')}</button><button class="btn s" data-p="deadlines">${t('All deadlines')}</button><button class="btn s" data-p="academics">${t('Progress')}</button></div>
-<div class="g g4"><div class="c"><div class="big">${V().length-dn}</div><div class="mu">${t('Pending')}</div></div><div class="c"><div class="big" style="color:var(--ok)">${dn}</div><div class="mu">${t('Completed')}</div></div><div class="c"><div class="big" style="color:var(--bad)">${o}</div><div class="mu">${t('Overdue')}</div></div><div class="c"><div class="big" style="color:var(--wn)">${wk}</div><div class="mu">${t('Due in 7 days')}</div></div></div>
-<div class="g g2" style="margin-top:14px">${hw()}<div class="c"><h3>${t('Upcoming deadlines')}</h3>${nx.map(rowDl).join('')||'<p class="mu">'+t('Nothing pending. Nice work!')+'</p>'}</div>
-<div class="c"><h3>${t('Today’s top priorities')}</h3><div class="hint">${t('Write up to three things you most want to finish today.')}</div>${S.top.map((v,i)=>`<input data-l="top" data-i="${i}" value="${esc(v)}" placeholder="${t('Priority {0}',i+1)}" style="margin-bottom:6px">`).join('')}<h3 style="margin-top:14px">${t('Daily goals')}</h3><div class="hint">${t('Small goals for today, e.g. “Review chapter 3”.')}</div>${S.goals.map((v,i)=>`<input data-l="goals" data-i="${i}" value="${esc(v)}" placeholder="${t('Goal {0}',i+1)}" style="margin-bottom:6px">`).join('')}</div>
-<div class="c" style="grid-column:1/-1"><h3>${t('Progress by course')}</h3><div class="g g2" style="gap:0 24px">${cs}</div></div></div>`;
-document.querySelectorAll('[data-l]').forEach(e=>e.oninput=()=>{S[e.dataset.l][e.dataset.i]=e.value;save()});navWire();wire();hwire()}
-function about(){$('#m').innerHTML=cv('about',t('About Us'),t('Unihub for National University Students'))+`<div class="c about"><p>${t('Unihub is a website designed for National University students, providing a convenient place to organize their academic activities and manage their student life.')}</p></div>`}
-function navWire(){document.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>show(b.dataset.p))}
-function deadlines(){$('#m').innerHTML=`${cv('deadlines',t('Deadlines'),t('Lectures, practicals, exams and assignments. Tick a row when it’s done.'))}
-<div class="tb"><input id="fq" placeholder="${t('Filter…')}" aria-label="${t('Filter…')}" value="${esc(F.q)}"><select id="fs" aria-label="${t('Course')}"><option value="">${t('All courses')}</option>${SUBS().map(s=>`<option ${s==F.sub?'selected':''}>${esc(s)}</option>`).join('')}</select><select id="ft" aria-label="${t('Type')}"><option value="">${t('All types')}</option>${TYPES().map(s=>`<option value="${esc(s)}" ${s==F.type?'selected':''}>${esc(t(s))}</option>`).join('')}</select><select id="fx" aria-label="${t('Status')}"><option value="">${t('Any status')}</option>${Object.entries(LB).map(([k,v])=>`<option value="${k}" ${k==F.stat?'selected':''}>${t(v)}</option>`).join('')}</select><select id="fo" aria-label="${t('Sort')}"><option value="date" ${F.sort=='date'?'selected':''}>${t('Sort: date')}</option><option value="subject" ${F.sort=='subject'?'selected':''}>${t('Sort: course')}</option><option value="title" ${F.sort=='title'?'selected':''}>${t('Sort: title')}</option></select><button class="btn" data-add="d">${t('＋ Add')}</button><button class="btn s" id="ex">${t('Download .ics (all shown)')}</button></div>
-<p class="mu" id="cnt"></p><div class="tw"><table><thead><tr><th>${t('Done')}</th><th>${t('Title')}</th><th>${t('Course')}</th><th>${t('Due')}</th><th>${t('Status')}</th><th>${t('Notes')}</th><th></th></tr></thead><tbody id="tbd"></tbody></table></div>
-<p class="mu">${t('Calendar: each row’s “＋ Google” link opens Google Calendar with the event filled in, and the .ics file imports into Google Calendar or any other calendar app. Signing in with Google to sync automatically needs a backend and Google API credentials, which this page doesn’t have.')}</p>`;
-const run=()=>{F.q=$('#fq').value;F.sub=$('#fs').value;F.type=$('#ft').value;F.stat=$('#fx').value;F.sort=$('#fo').value;fill()};['#fq','#fs','#ft','#fx','#fo'].forEach(i=>$(i).oninput=run);$('#ex').onclick=()=>dlIcs(list());fill();wire()}
-const list=()=>{const q=F.q.toLowerCase();return V().filter(x=>(!q||(x.title+x.notes+x.subject+x.task).toLowerCase().includes(q))&&(!F.sub||x.subject==F.sub)&&(!F.type||x.task==F.type)&&(!F.stat||st(x)==F.stat)).sort((a,b)=>F.sort=='date'?a.date.localeCompare(b.date)||(a.time||'').localeCompare(b.time||''):(a[F.sort]||'').localeCompare(b[F.sort]||''))};
-function fill(){const l=list();$('#cnt').textContent=t('{0} of {1} shown',l.length,V().length);$('#tbd').innerHTML=l.map(x=>`<tr class="${x.done?'dn':''}"><td><input type="checkbox" ${x.done?'checked':''} data-t="${x.id}" aria-label="${t('Done')}"></td><td><b>${esc(x.title)}</b><div class="mu">${esc(t(x.task))}${x.priority&&x.priority!='Normal'?' · '+t('{0} priority',t(x.priority)):''}</div></td><td>${esc(x.subject)}</td><td>${fmt(x.date)}${x.time?'<br><bdi dir="ltr">'+x.time+(x.end?'–'+x.end:'')+'</bdi>':''}</td><td><span class="tg ${st(x)}">${t(LB[st(x)])}</span></td><td class="mu" style="white-space:pre-line;max-width:220px">${esc(x.notes)}</td><td style="white-space:nowrap"><a href="${esc(gcal(x))}" target="_blank" rel="noopener noreferrer">${t('＋ Google')}</a><br><button class="btn s sm" data-e="${x.id}">${t('Edit')}</button> <button class="btn s sm" data-x="${x.id}">${t('Delete')}</button></td></tr>`).join('')||`<tr><td colspan="7" class="mu">${t('No deadlines match these filters.')}</td></tr>`;
-document.querySelectorAll('[data-e]').forEach(e=>e.onclick=()=>editDl(e.dataset.e));document.querySelectorAll('[data-x]').forEach(e=>e.onclick=()=>{ask(t('Delete this deadline?'),()=>{S.dl=S.dl.filter(y=>y.id!=e.dataset.x);save();show('deadlines')})});document.querySelectorAll('[data-t]').forEach(e=>e.onchange=()=>{const x=S.dl.find(y=>y.id==e.dataset.t);x.done=e.checked;x.doneAt=e.checked?TODAY:'';save();fill();const n=document.querySelector('[data-t="'+x.id+'"]');if(n)n.focus()})}
-function academics(){const a=V().length,d=V().filter(x=>x.done).length,w=addD(TODAY,-6),dw=V().filter(x=>x.done&&x.doneAt>=w).length,nw=V().filter(x=>!x.done&&x.date>=TODAY&&x.date<=addD(TODAY,6)).length;
-$('#m').innerHTML=`${cv('academics',t('Academics'),t('Progress counts planner items you’ve ticked off. It does not reflect grades.'))}<div class="g g4"><div class="c"><div class="big">${pct(d,a)}%</div><div class="mu">${t('Overall completion ({0}/{1})',d,a)}</div>${bar(pct(d,a))}</div><div class="c"><div class="big">${dw}</div><div class="mu">${t('Completed in last 7 days')}</div></div><div class="c"><div class="big">${nw}</div><div class="mu">${t('Due in next 7 days')}</div></div><div class="c"><div class="big" style="color:var(--bad)">${V().filter(x=>st(x)=='overdue').length}</div><div class="mu">${t('Overdue')}</div></div></div>
-<div class="g g2" style="margin-top:14px">${SUBS().map(s=>{const l=V().filter(x=>x.subject==s),n=l.filter(x=>x.done).length,nx=l.filter(x=>!x.done).sort((p,q)=>p.date.localeCompare(q.date))[0],ty={};l.forEach(x=>ty[x.task]=(ty[x.task]||0)+1);return`<div class="c"><h3>${esc(s)}</h3><div class="mu">${t('{0} of {1} done',n,l.length)} · ${pct(n,l.length)}%</div>${bar(pct(n,l.length))}<p class="mu">${Object.entries(ty).map(([k,v])=>v+' '+esc(t(k)).toLowerCase()).join(' · ')}</p>${nx?`<div class="mu">${t('Next:')} <b>${esc(nx.title)}</b> · ${fmt(nx.date)}</div>`:'<div class="mu">'+t('All done 🎉')+'</div>'}<button class="btn s sm" style="margin-top:8px" data-c="${esc(s)}">${t('View deadlines')}</button></div>`}).join('')}</div>`;
-document.querySelectorAll('[data-c]').forEach(e=>e.onclick=()=>{F={q:'',sub:e.dataset.c,type:'',stat:'',sort:'date'};show('deadlines')})}
-function books(){const r=S.bk.filter(b=>b.status=='Read'),rt=r.filter(b=>b.rating),yr=r.filter(b=>(b.read||'').endsWith('2026')).length,q=B.q.toLowerCase(),l=S.bk.filter(b=>(!q||(b.name+b.author+b.genre).toLowerCase().includes(q))&&(!B.stat||b.status==B.stat));
-$('#m').innerHTML=`${cv('books',t('Book Tracker'),t('Your library, ratings and 2026 reading goal.'))}<div class="g g4" style="margin-top:12px"><div class="c"><div class="big">${r.length}</div><div class="mu">${t('Books read')}</div></div><div class="c"><div class="big">${S.bk.filter(b=>b.status=='Current Reading').length}</div><div class="mu">${t('Reading now')}</div></div><div class="c"><div class="big">${rt.length?(rt.reduce((a,b)=>a+b.rating,0)/rt.length).toFixed(1):'–'}★</div><div class="mu">${t('Average rating')}</div></div><div class="c"><div class="big">${yr}/50</div><div class="mu">${t('2026 goal: read 50 books')}</div>${bar(pct(yr,50))}</div></div>
-<div class="tb"><input id="bq" placeholder="${t('Filter by title, author or genre…')}" aria-label="${t('Filter by title, author or genre…')}" value="${esc(B.q)}"><select id="bs" aria-label="${t('Status')}"><option value="">${t('All statuses')}</option>${['Read','Current Reading','TBR','Not Read'].map(s=>`<option value="${s}" ${s==B.stat?'selected':''}>${t(s)}</option>`).join('')}</select><button class="btn" data-add="b">${t('＋ Add book')}</button></div><div class="tw"><table><thead><tr><th>${t('Title')}</th><th>${t('Author')}</th><th>${t('Genre')}</th><th>${t('Status')}</th><th>${t('Rating')}</th><th></th></tr></thead><tbody>${l.map(b=>`<tr><td>${thumb(b.name)}<span class="tt"><b>${esc(b.name)}</b>${b.pages?`<div class="mu">${t('{0}/{1} pages',b.cur||0,b.pages)}</div>`:''}</span></td><td>${esc(b.author)}</td><td class="mu">${esc(b.genre)}</td><td><span class="tg">${esc(t(b.status))}</span></td><td>${'★'.repeat(b.rating||0)||'–'}</td><td style="white-space:nowrap"><button class="btn s sm" data-be="${b.id}">${t('Edit')}</button> <button class="btn s sm" data-bx="${b.id}">${t('Delete')}</button></td></tr>`).join('')||'<tr><td colspan="6" class="mu">'+t('No books match.')+'</td></tr>'}</tbody></table></div>`;
-const run=()=>{B.q=$('#bq').value;B.stat=$('#bs').value;const p=$('#bq').selectionStart;books();$('#bq').focus();$('#bq').setSelectionRange(p,p)};$('#bq').oninput=run;$('#bs').onchange=run;
-document.querySelectorAll('[data-be]').forEach(e=>e.onclick=()=>editBk(e.dataset.be));document.querySelectorAll('[data-bx]').forEach(e=>e.onclick=()=>{ask(t('Delete this book?'),()=>{S.bk=S.bk.filter(y=>y.id!=e.dataset.bx);save();books()})});wire()}
+const rowDl = (x) =>
+  `<div class="row"><input type="checkbox" ${x.done ? "checked" : ""} data-t="${x.id}" aria-label="${t("Done")}"><div><b>${esc(x.title)}</b><div class="mu">${esc(x.subject)} · ${fmt(x.date)}${x.time ? " · " + x.time : ""}</div></div><span class="tg ${st(x)}">${t(LB[st(x)])}</span></div>`;
+function wire() {
+  document.querySelectorAll("[data-t]:not(#tbd [data-t])").forEach(
+    (e) =>
+      (e.onchange = () => {
+        const x = S.dl.find((y) => y.id == e.dataset.t);
+        x.done = e.checked;
+        x.doneAt = e.checked ? TODAY : "";
+        save();
+        show(P);
+      }),
+  );
+  document
+    .querySelectorAll("[data-add]")
+    .forEach(
+      (e) => (e.onclick = () => (e.dataset.add == "b" ? editBk() : editDl())),
+    );
+}
+function home() {
+  const o = V().filter((x) => st(x) == "overdue").length,
+    dn = V().filter((x) => x.done).length,
+    wk = V().filter((x) => st(x) == "soon").length,
+    nx = V()
+      .filter((x) => !x.done)
+      .sort(
+        (a, b) =>
+          a.date.localeCompare(b.date) ||
+          (a.time || "").localeCompare(b.time || ""),
+      )
+      .slice(0, 6);
+  const cs = SUBS()
+    .map((s) => {
+      const l = V().filter((x) => x.subject == s);
+      return `<div style="margin:9px 0"><div style="display:flex;justify-content:space-between"><span>${esc(s)}</span><span class="mu">${l.filter((x) => x.done).length}/${l.length}</span></div>${bar(pct(l.filter((x) => x.done).length, l.length))}</div>`;
+    })
+    .join("");
+  $("#m").innerHTML =
+    `${cv("home", t("Welcome to UniHub"), t("Today is {0}. Here is where your studies stand.", fmt(TODAY)))}
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0"><button class="btn" data-add="d">${t("＋ Add deadline")}</button><button class="btn s" data-add="b">${t("＋ Add book")}</button><button class="btn s" data-p="deadlines">${t("All deadlines")}</button><button class="btn s" data-p="academics">${t("Progress")}</button></div>
+<div class="g g4"><div class="c"><div class="big">${V().length - dn}</div><div class="mu">${t("Pending")}</div></div><div class="c"><div class="big" style="color:var(--ok)">${dn}</div><div class="mu">${t("Completed")}</div></div><div class="c"><div class="big" style="color:var(--bad)">${o}</div><div class="mu">${t("Overdue")}</div></div><div class="c"><div class="big" style="color:var(--wn)">${wk}</div><div class="mu">${t("Due in 7 days")}</div></div></div>
+<div class="g g2" style="margin-top:14px">${hw()}<div class="c"><h3>${t("Upcoming deadlines")}</h3>${nx.map(rowDl).join("") || '<p class="mu">' + t("Nothing pending. Nice work!") + "</p>"}</div>
+<div class="c"><h3>${t("Today’s top priorities")}</h3><div class="hint">${t("Write up to three things you most want to finish today.")}</div>${S.top.map((v, i) => `<input data-l="top" data-i="${i}" value="${esc(v)}" placeholder="${t("Priority {0}", i + 1)}" style="margin-bottom:6px">`).join("")}<h3 style="margin-top:14px">${t("Daily goals")}</h3><div class="hint">${t("Small goals for today, e.g. “Review chapter 3”.")}</div>${S.goals.map((v, i) => `<input data-l="goals" data-i="${i}" value="${esc(v)}" placeholder="${t("Goal {0}", i + 1)}" style="margin-bottom:6px">`).join("")}</div>
+<div class="c" style="grid-column:1/-1"><h3>${t("Progress by course")}</h3><div class="g g2" style="gap:0 24px">${cs}</div></div></div>`;
+  document.querySelectorAll("[data-l]").forEach(
+    (e) =>
+      (e.oninput = () => {
+        S[e.dataset.l][e.dataset.i] = e.value;
+        save();
+      }),
+  );
+  navWire();
+  wire();
+  hwire();
+}
+function about() {
+  $("#m").innerHTML =
+    cv("about", t("About Us"), t("Unihub for National University Students")) +
+    `<div class="c about"><p>${t("Unihub is a website designed for National University students, providing a convenient place to organize their academic activities and manage their student life.")}</p></div>`;
+}
+function navWire() {
+  document
+    .querySelectorAll("[data-p]")
+    .forEach((b) => (b.onclick = () => show(b.dataset.p)));
+}
+function deadlines() {
+  $("#m").innerHTML =
+    `${cv("deadlines", t("Deadlines"), t("Lectures, practicals, exams and assignments. Tick a row when it’s done."))}
+<div class="tb"><input id="fq" placeholder="${t("Filter…")}" aria-label="${t("Filter…")}" value="${esc(F.q)}"><select id="fs" aria-label="${t("Course")}"><option value="">${t("All courses")}</option>${SUBS()
+      .map((s) => `<option ${s == F.sub ? "selected" : ""}>${esc(s)}</option>`)
+      .join(
+        "",
+      )}</select><select id="ft" aria-label="${t("Type")}"><option value="">${t("All types")}</option>${TYPES()
+      .map(
+        (s) =>
+          `<option value="${esc(s)}" ${s == F.type ? "selected" : ""}>${esc(t(s))}</option>`,
+      )
+      .join(
+        "",
+      )}</select><select id="fx" aria-label="${t("Status")}"><option value="">${t("Any status")}</option>${Object.entries(
+      LB,
+    )
+      .map(
+        ([k, v]) =>
+          `<option value="${k}" ${k == F.stat ? "selected" : ""}>${t(v)}</option>`,
+      )
+      .join(
+        "",
+      )}</select><select id="fo" aria-label="${t("Sort")}"><option value="date" ${F.sort == "date" ? "selected" : ""}>${t("Sort: date")}</option><option value="subject" ${F.sort == "subject" ? "selected" : ""}>${t("Sort: course")}</option><option value="title" ${F.sort == "title" ? "selected" : ""}>${t("Sort: title")}</option></select><button class="btn" data-add="d">${t("＋ Add")}</button><button class="btn s" id="ex">${t("Download .ics (all shown)")}</button></div>
+<p class="mu" id="cnt"></p><div class="tw"><table><thead><tr><th>${t("Done")}</th><th>${t("Title")}</th><th>${t("Course")}</th><th>${t("Due")}</th><th>${t("Status")}</th><th>${t("Notes")}</th><th></th></tr></thead><tbody id="tbd"></tbody></table></div>
+<p class="mu">${t("Calendar: each row’s “＋ Google” link opens Google Calendar with the event filled in, and the .ics file imports into Google Calendar or any other calendar app. Signing in with Google to sync automatically needs a backend and Google API credentials, which this page doesn’t have.")}</p>`;
+  const run = () => {
+    F.q = $("#fq").value;
+    F.sub = $("#fs").value;
+    F.type = $("#ft").value;
+    F.stat = $("#fx").value;
+    F.sort = $("#fo").value;
+    fill();
+  };
+  ["#fq", "#fs", "#ft", "#fx", "#fo"].forEach((i) => ($(i).oninput = run));
+  $("#ex").onclick = () => dlIcs(list());
+  fill();
+  wire();
+}
+const list = () => {
+  const q = F.q.toLowerCase();
+  return V()
+    .filter(
+      (x) =>
+        (!q ||
+          (x.title + x.notes + x.subject + x.task).toLowerCase().includes(q)) &&
+        (!F.sub || x.subject == F.sub) &&
+        (!F.type || x.task == F.type) &&
+        (!F.stat || st(x) == F.stat),
+    )
+    .sort((a, b) =>
+      F.sort == "date"
+        ? a.date.localeCompare(b.date) ||
+          (a.time || "").localeCompare(b.time || "")
+        : (a[F.sort] || "").localeCompare(b[F.sort] || ""),
+    );
+};
+function fill() {
+  const l = list();
+  $("#cnt").textContent = t("{0} of {1} shown", l.length, V().length);
+  $("#tbd").innerHTML =
+    l
+      .map(
+        (x) =>
+          `<tr class="${x.done ? "dn" : ""}"><td><input type="checkbox" ${x.done ? "checked" : ""} data-t="${x.id}" aria-label="${t("Done")}"></td><td><b>${esc(x.title)}</b><div class="mu">${esc(t(x.task))}${x.priority && x.priority != "Normal" ? " · " + t("{0} priority", t(x.priority)) : ""}</div></td><td>${esc(x.subject)}</td><td>${fmt(x.date)}${x.time ? '<br><bdi dir="ltr">' + x.time + (x.end ? "–" + x.end : "") + "</bdi>" : ""}</td><td><span class="tg ${st(x)}">${t(LB[st(x)])}</span></td><td class="mu" style="white-space:pre-line;max-width:220px">${esc(x.notes)}</td><td style="white-space:nowrap"><a href="${esc(gcal(x))}" target="_blank" rel="noopener noreferrer">${t("＋ Google")}</a><br><button class="btn s sm" data-e="${x.id}">${t("Edit")}</button> <button class="btn s sm" data-x="${x.id}">${t("Delete")}</button></td></tr>`,
+      )
+      .join("") ||
+    `<tr><td colspan="7" class="mu">${t("No deadlines match these filters.")}</td></tr>`;
+  document
+    .querySelectorAll("[data-e]")
+    .forEach((e) => (e.onclick = () => editDl(e.dataset.e)));
+  document.querySelectorAll("[data-x]").forEach(
+    (e) =>
+      (e.onclick = () => {
+        ask(t("Delete this deadline?"), () => {
+          S.dl = S.dl.filter((y) => y.id != e.dataset.x);
+          save();
+          show("deadlines");
+        });
+      }),
+  );
+  document.querySelectorAll("[data-t]").forEach(
+    (e) =>
+      (e.onchange = () => {
+        const x = S.dl.find((y) => y.id == e.dataset.t);
+        x.done = e.checked;
+        x.doneAt = e.checked ? TODAY : "";
+        save();
+        fill();
+        const n = document.querySelector('[data-t="' + x.id + '"]');
+        if (n) n.focus();
+      }),
+  );
+}
+function academics() {
+  const a = V().length,
+    d = V().filter((x) => x.done).length,
+    w = addD(TODAY, -6),
+    dw = V().filter((x) => x.done && x.doneAt >= w).length,
+    nw = V().filter(
+      (x) => !x.done && x.date >= TODAY && x.date <= addD(TODAY, 6),
+    ).length;
+  $("#m").innerHTML =
+    `${cv("academics", t("Academics"), t("Progress counts planner items you’ve ticked off. It does not reflect grades."))}<div class="g g4"><div class="c"><div class="big">${pct(d, a)}%</div><div class="mu">${t("Overall completion ({0}/{1})", d, a)}</div>${bar(pct(d, a))}</div><div class="c"><div class="big">${dw}</div><div class="mu">${t("Completed in last 7 days")}</div></div><div class="c"><div class="big">${nw}</div><div class="mu">${t("Due in next 7 days")}</div></div><div class="c"><div class="big" style="color:var(--bad)">${V().filter((x) => st(x) == "overdue").length}</div><div class="mu">${t("Overdue")}</div></div></div>
+<div class="g g2" style="margin-top:14px">${SUBS()
+      .map((s) => {
+        const l = V().filter((x) => x.subject == s),
+          n = l.filter((x) => x.done).length,
+          nx = l
+            .filter((x) => !x.done)
+            .sort((p, q) => p.date.localeCompare(q.date))[0],
+          ty = {};
+        l.forEach((x) => (ty[x.task] = (ty[x.task] || 0) + 1));
+        return `<div class="c"><h3>${esc(s)}</h3><div class="mu">${t("{0} of {1} done", n, l.length)} · ${pct(n, l.length)}%</div>${bar(pct(n, l.length))}<p class="mu">${Object.entries(
+          ty,
+        )
+          .map(([k, v]) => v + " " + esc(t(k)).toLowerCase())
+          .join(
+            " · ",
+          )}</p>${nx ? `<div class="mu">${t("Next:")} <b>${esc(nx.title)}</b> · ${fmt(nx.date)}</div>` : '<div class="mu">' + t("All done 🎉") + "</div>"}<button class="btn s sm" style="margin-top:8px" data-c="${esc(s)}">${t("View deadlines")}</button></div>`;
+      })
+      .join("")}</div>`;
+  document.querySelectorAll("[data-c]").forEach(
+    (e) =>
+      (e.onclick = () => {
+        F = { q: "", sub: e.dataset.c, type: "", stat: "", sort: "date" };
+        show("deadlines");
+      }),
+  );
+}
+function books() {
+  const r = S.bk.filter((b) => b.status == "Read"),
+    rt = r.filter((b) => b.rating),
+    yr = r.filter((b) => (b.read || "").endsWith("2026")).length,
+    q = B.q.toLowerCase(),
+    l = S.bk.filter(
+      (b) =>
+        (!q || (b.name + b.author + b.genre).toLowerCase().includes(q)) &&
+        (!B.stat || b.status == B.stat),
+    );
+  $("#m").innerHTML =
+    `${cv("books", t("Book Tracker"), t("Your library, ratings and 2026 reading goal."))}<div class="g g4" style="margin-top:12px"><div class="c"><div class="big">${r.length}</div><div class="mu">${t("Books read")}</div></div><div class="c"><div class="big">${S.bk.filter((b) => b.status == "Current Reading").length}</div><div class="mu">${t("Reading now")}</div></div><div class="c"><div class="big">${rt.length ? (rt.reduce((a, b) => a + b.rating, 0) / rt.length).toFixed(1) : "–"}★</div><div class="mu">${t("Average rating")}</div></div><div class="c"><div class="big">${yr}/50</div><div class="mu">${t("2026 goal: read 50 books")}</div>${bar(pct(yr, 50))}</div></div>
+<div class="tb"><input id="bq" placeholder="${t("Filter by title, author or genre…")}" aria-label="${t("Filter by title, author or genre…")}" value="${esc(B.q)}"><select id="bs" aria-label="${t("Status")}"><option value="">${t("All statuses")}</option>${["Read", "Current Reading", "TBR", "Not Read"].map((s) => `<option value="${s}" ${s == B.stat ? "selected" : ""}>${t(s)}</option>`).join("")}</select><button class="btn" data-add="b">${t("＋ Add book")}</button></div><div class="tw"><table><thead><tr><th>${t("Title")}</th><th>${t("Author")}</th><th>${t("Genre")}</th><th>${t("Status")}</th><th>${t("Rating")}</th><th></th></tr></thead><tbody>${l.map((b) => `<tr><td>${thumb(b.name)}<span class="tt"><b>${esc(b.name)}</b>${b.pages ? `<div class="mu">${t("{0}/{1} pages", b.cur || 0, b.pages)}</div>` : ""}</span></td><td>${esc(b.author)}</td><td class="mu">${esc(b.genre)}</td><td><span class="tg">${esc(t(b.status))}</span></td><td>${"★".repeat(b.rating || 0) || "–"}</td><td style="white-space:nowrap"><button class="btn s sm" data-be="${b.id}">${t("Edit")}</button> <button class="btn s sm" data-bx="${b.id}">${t("Delete")}</button></td></tr>`).join("") || '<tr><td colspan="6" class="mu">' + t("No books match.") + "</td></tr>"}</tbody></table></div>`;
+  const run = () => {
+    B.q = $("#bq").value;
+    B.stat = $("#bs").value;
+    const p = $("#bq").selectionStart;
+    books();
+    $("#bq").focus();
+    $("#bq").setSelectionRange(p, p);
+  };
+  $("#bq").oninput = run;
+  $("#bs").onchange = run;
+  document
+    .querySelectorAll("[data-be]")
+    .forEach((e) => (e.onclick = () => editBk(e.dataset.be)));
+  document.querySelectorAll("[data-bx]").forEach(
+    (e) =>
+      (e.onclick = () => {
+        ask(t("Delete this book?"), () => {
+          S.bk = S.bk.filter((y) => y.id != e.dataset.bx);
+          save();
+          books();
+        });
+      }),
+  );
+  wire();
+}
 /* ---- covers, confirm, helpers ---- */
-const CV={home:['🎓','#3730a3','#0e7490'],deadlines:['📅','#1d4ed8','#4338ca'],academics:['📚','#6d28d9','#1d4ed8'],books:['📖','#92400e','#9d174d'],goals:['🎯','#be123c','#7e22ce'],habits:['🌱','#047857','#0f766e'],budget:['💰','#15803d','#0e7490'],about:['🏫','#3730a3','#0e7490'],library:['🗂️','#0e7490','#4338ca'],assignments:['📝','#b45309','#be123c']};
-const cv=(k,ti,s)=>{const[c,a,b]=CV[k];return`<section class="cv" role="img" aria-label="${ti} ${t('section banner')}" style="background:linear-gradient(120deg,${a},${b})"><svg viewBox="0 0 400 120" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><circle cx="350" cy="25" r="70" fill="#fff" opacity=".12"/><circle cx="290" cy="115" r="48" fill="#fff" opacity=".1"/><path d="M0 98Q100 58 200 94T400 78V120H0Z" fill="#fff" opacity=".1"/></svg><span class="ic" aria-hidden="true">${c}</span><div><h2>${ti}</h2><p>${s}</p></div></section>`};
-const thumb=n=>{let h=0;for(const c of n)h=(h*31+c.charCodeAt(0))%360;return`<span class="th" aria-hidden="true" style="background:hsl(${h} 45% 35%)">${esc((n.trim()[0]||'?').toUpperCase())}</span>`};
-function ask(msg,fn,lbl){const d=$('#dg');d.innerHTML=`<h3>${t('Please confirm')}</h3><p>${esc(msg)}</p><div class="acts"><button class="btn s" id="cx" type="button">${t('Cancel')}</button><button class="btn danger" id="sv" type="button">${lbl||t('Delete')}</button></div>`;$('#cx').onclick=()=>d.close();$('#sv').onclick=()=>{d.close();fn()};d.showModal()}
-const rr=(id,fn)=>{const p=$(id).selectionStart;fn();const e=$(id);e.focus();try{e.setSelectionRange(p,p)}catch(x){}};
-const nowHM=()=>new Date().toTimeString().slice(0,5);
+const CV = {
+  home: ["🎓", "#3730a3", "#0e7490"],
+  deadlines: ["📅", "#1d4ed8", "#4338ca"],
+  academics: ["📚", "#6d28d9", "#1d4ed8"],
+  books: ["📖", "#92400e", "#9d174d"],
+  goals: ["🎯", "#be123c", "#7e22ce"],
+  habits: ["🌱", "#047857", "#0f766e"],
+  budget: ["💰", "#15803d", "#0e7490"],
+  about: ["🏫", "#3730a3", "#0e7490"],
+  library: ["🗂️", "#0e7490", "#4338ca"],
+  assignments: ["📝", "#b45309", "#be123c"],
+};
+const cv = (k, ti, s) => {
+  const [c, a, b] = CV[k];
+  return `<section class="cv" role="img" aria-label="${ti} ${t("section banner")}" style="background:linear-gradient(120deg,${a},${b})"><svg viewBox="0 0 400 120" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><circle cx="350" cy="25" r="70" fill="#fff" opacity=".12"/><circle cx="290" cy="115" r="48" fill="#fff" opacity=".1"/><path d="M0 98Q100 58 200 94T400 78V120H0Z" fill="#fff" opacity=".1"/></svg><span class="ic" aria-hidden="true">${c}</span><div><h2>${ti}</h2><p>${s}</p></div></section>`;
+};
+const thumb = (n) => {
+  let h = 0;
+  for (const c of n) h = (h * 31 + c.charCodeAt(0)) % 360;
+  return `<span class="th" aria-hidden="true" style="background:hsl(${h} 45% 35%)">${esc((n.trim()[0] || "?").toUpperCase())}</span>`;
+};
+function ask(msg, fn, lbl) {
+  const d = $("#dg");
+  d.innerHTML = `<h3>${t("Please confirm")}</h3><p>${esc(msg)}</p><div class="acts"><button class="btn s" id="cx" type="button">${t("Cancel")}</button><button class="btn danger" id="sv" type="button">${lbl || t("Delete")}</button></div>`;
+  $("#cx").onclick = () => d.close();
+  $("#sv").onclick = () => {
+    d.close();
+    fn();
+  };
+  d.showModal();
+}
+const rr = (id, fn) => {
+  const p = $(id).selectionStart;
+  fn();
+  const e = $(id);
+  e.focus();
+  try {
+    e.setSelectionRange(p, p);
+  } catch (x) {}
+};
+const nowHM = () => new Date().toTimeString().slice(0, 5);
 /* ---- goals ---- */
-const PR={Urgent:0,High:1,Medium:2,Low:3},GC=['Academic','Personal','Programming','Career','Health','Financial','Other'],GS=['Not Started','In Progress','Completed','On Hold'];
-const gs=(a,b)=>PR[a.pri]-PR[b.pri]||(a.target||'9').localeCompare(b.target||'9'),gp=g=>g.ms.length?pct(g.ms.filter(m=>m.done).length,g.ms.length):g.status=='Completed'?100:+g.prog||0;
-let G={q:'',cat:'',pri:'',stat:'',sort:'target'};
-function editGl(id){const x=S.gl.find(y=>y.id==id)||{};modal(id?t('Edit goal'):t('Add priority or goal'),[{k:'title',l:t('Title')},{k:'desc',l:t('Description'),t:'area'},{k:'cat',l:t('Category'),t:'select',tr:1,o:GC},{k:'pri',l:t('Priority'),t:'select',tr:1,o:Object.keys(PR)},{k:'start',l:t('Start date'),t:'date'},{k:'target',l:t('Target date'),t:'date'},{k:'status',l:t('Status'),t:'select',tr:1,o:GS},{k:'prog',l:t('Progress % (used when there are no milestones)'),t:'number',n:1},{k:'ms',l:t('Milestones (one per line)'),t:'area'},{k:'notes',l:t('Notes'),t:'area'}],{cat:'Academic',pri:'Medium',status:'Not Started',start:TODAY,prog:0,...x,ms:(x.ms||[]).map(m=>m.t).join('\n')},o=>{if(!o.title)return t('Please enter a title.');if(o.start&&o.target&&o.target<o.start)return t('The target date is before the start date.');o.prog=Math.min(100,Math.max(0,+o.prog||0));const old=x.ms||[],ms=o.ms.split('\n').map(s=>s.trim()).filter(Boolean).map(t=>({t,done:(old.find(m=>m.t==t)||{}).done||false}));if(o.status=='Completed'){o.prog=100;ms.forEach(m=>m.done=true)}const r={...o,ms};if(id)Object.assign(x,r);else S.gl.push({id:uid(),...r});save();show('goals');toast(t('Saved.'))})}
-function goals(){const q=G.q.toLowerCase(),l=S.gl.filter(g=>(!q||(g.title+g.desc+g.notes).toLowerCase().includes(q))&&(!G.cat||g.cat==G.cat)&&(!G.pri||g.pri==G.pri)&&(!G.stat||g.status==G.stat)).sort(G.sort=='priority'?gs:G.sort=='title'?(a,b)=>a.title.localeCompare(b.title):(a,b)=>(a.target||'9').localeCompare(b.target||'9')),op=(a,v)=>a.map(s=>`<option value="${s}" ${s==v?'selected':''}>${t(s)}</option>`).join('');
-$('#m').innerHTML=cv('goals',t('Priorities & Goals'),t('Break big goals into milestones and track them to the finish.'))+`<div class="tb"><input id="gq" placeholder="${t('Search goals…')}" aria-label="${t('Search goals…')}" value="${esc(G.q)}"><select id="gc" aria-label="${t('Category')}"><option value="">${t('All categories')}</option>${op(GC,G.cat)}</select><select id="gr" aria-label="${t('Priority')}"><option value="">${t('All priorities')}</option>${op(Object.keys(PR),G.pri)}</select><select id="gt" aria-label="${t('Status')}"><option value="">${t('All statuses')}</option>${op(GS,G.stat)}</select><select id="go" aria-label="${t('Sort')}"><option value="target" ${G.sort=='target'?'selected':''}>${t('Sort: target date')}</option><option value="priority" ${G.sort=='priority'?'selected':''}>${t('Sort: priority')}</option><option value="title" ${G.sort=='title'?'selected':''}>${t('Sort: title')}</option></select><button class="btn" id="ga">${t('＋ Add goal')}</button></div><p class="mu">${t('{0} of {1} shown',l.length,S.gl.length)}</p><div class="g g2">`+(l.map(g=>{const dn=g.status=='Completed',late=!dn&&g.target&&g.target<TODAY,soon=!dn&&!late&&g.target&&g.target<=addD(TODAY,7);return`<div class="c"><div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px"><span class="tg">${t(g.cat)}</span><span class="tg ${g.pri=='Urgent'?'overdue':g.pri=='High'?'soon':''}">${t(g.pri)}</span><span class="tg ${dn?'done':''}">${t(g.status)}</span></div><h3 style="margin:0">${esc(g.title)}</h3><p class="mu" style="white-space:pre-line;margin:4px 0">${esc(g.desc)}</p><div class="mu">${g.start?t('Start {0}',fmt(g.start))+' · ':''}${g.target?(late?'<b style="color:var(--bad)">'+t('Overdue')+' · </b>':soon?'<b style="color:var(--wn)">'+t('Approaching')+' · </b>':'')+t('Target {0}',fmt(g.target)):t('No target date')}</div>${bar(gp(g))}<div class="mu">${t('{0}% complete',gp(g))}</div>${g.ms.map((m,i)=>`<label class="row" style="padding:3px 0"><input type="checkbox" data-gm="${g.id}:${i}" ${m.done?'checked':''}><span ${m.done?'style="text-decoration:line-through;opacity:.6"':''}>${esc(m.t)}</span></label>`).join('')}${g.notes?`<p class="mu" style="white-space:pre-line">${esc(g.notes)}</p>`:''}<div style="margin-top:8px;display:flex;gap:6px"><button class="btn s sm" data-ge="${g.id}">${t('Edit')}</button>${dn?'':`<button class="btn s sm" data-gd="${g.id}">${t('Complete')}</button>`}<button class="btn s sm" data-gx="${g.id}">${t('Delete')}</button></div></div>`}).join('')||'<div class="c mu">'+t('No goals yet. Add as many as you need.')+'</div>')+'</div>';
-const run=id=>()=>{G.q=$('#gq').value;G.cat=$('#gc').value;G.pri=$('#gr').value;G.stat=$('#gt').value;G.sort=$('#go').value;rr(id,goals)};[['#gq'],['#gc'],['#gr'],['#gt'],['#go']].forEach(([i])=>$(i).oninput=run(i));$('#ga').onclick=()=>editGl();
-document.querySelectorAll('[data-ge]').forEach(e=>e.onclick=()=>editGl(e.dataset.ge));
-document.querySelectorAll('[data-gd]').forEach(e=>e.onclick=()=>{const g=S.gl.find(y=>y.id==e.dataset.gd);g.status='Completed';g.prog=100;g.ms.forEach(m=>m.done=true);save();goals();toast(t('Goal completed 🎉'))});
-document.querySelectorAll('[data-gx]').forEach(e=>e.onclick=()=>ask(t('Delete this goal and its milestones?'),()=>{S.gl=S.gl.filter(y=>y.id!=e.dataset.gx);save();goals()}));
-document.querySelectorAll('[data-gm]').forEach(e=>e.onchange=()=>{const[i,n]=e.dataset.gm.split(':'),g=S.gl.find(y=>y.id==i);g.ms[+n].done=e.checked;if(g.ms.some(m=>m.done)&&g.status=='Not Started')g.status='In Progress';if(g.ms.every(m=>m.done))g.status='Completed';else if(g.status=='Completed')g.status='In Progress';save();goals()})}
+const PR = { Urgent: 0, High: 1, Medium: 2, Low: 3 },
+  GC = [
+    "Academic",
+    "Personal",
+    "Programming",
+    "Career",
+    "Health",
+    "Financial",
+    "Other",
+  ],
+  GS = ["Not Started", "In Progress", "Completed", "On Hold"];
+const gs = (a, b) =>
+    PR[a.pri] - PR[b.pri] || (a.target || "9").localeCompare(b.target || "9"),
+  gp = (g) =>
+    g.ms.length
+      ? pct(g.ms.filter((m) => m.done).length, g.ms.length)
+      : g.status == "Completed"
+        ? 100
+        : +g.prog || 0;
+let G = { q: "", cat: "", pri: "", stat: "", sort: "target" };
+function editGl(id) {
+  const x = S.gl.find((y) => y.id == id) || {};
+  modal(
+    id ? t("Edit goal") : t("Add priority or goal"),
+    [
+      { k: "title", l: t("Title") },
+      { k: "desc", l: t("Description"), t: "area" },
+      { k: "cat", l: t("Category"), t: "select", tr: 1, o: GC },
+      { k: "pri", l: t("Priority"), t: "select", tr: 1, o: Object.keys(PR) },
+      { k: "start", l: t("Start date"), t: "date" },
+      { k: "target", l: t("Target date"), t: "date" },
+      { k: "status", l: t("Status"), t: "select", tr: 1, o: GS },
+      {
+        k: "prog",
+        l: t("Progress % (used when there are no milestones)"),
+        t: "number",
+        n: 1,
+      },
+      { k: "ms", l: t("Milestones (one per line)"), t: "area" },
+      { k: "notes", l: t("Notes"), t: "area" },
+    ],
+    {
+      cat: "Academic",
+      pri: "Medium",
+      status: "Not Started",
+      start: TODAY,
+      prog: 0,
+      ...x,
+      ms: (x.ms || []).map((m) => m.t).join("\n"),
+    },
+    (o) => {
+      if (!o.title) return t("Please enter a title.");
+      if (o.start && o.target && o.target < o.start)
+        return t("The target date is before the start date.");
+      o.prog = Math.min(100, Math.max(0, +o.prog || 0));
+      const old = x.ms || [],
+        ms = o.ms
+          .split("\n")
+          .map((s) => s.trim())
+          .filter(Boolean)
+          .map((t) => ({
+            t,
+            done: (old.find((m) => m.t == t) || {}).done || false,
+          }));
+      if (o.status == "Completed") {
+        o.prog = 100;
+        ms.forEach((m) => (m.done = true));
+      }
+      const r = { ...o, ms };
+      if (id) Object.assign(x, r);
+      else S.gl.push({ id: uid(), ...r });
+      save();
+      show("goals");
+      toast(t("Saved."));
+    },
+  );
+}
+function goals() {
+  const q = G.q.toLowerCase(),
+    l = S.gl
+      .filter(
+        (g) =>
+          (!q || (g.title + g.desc + g.notes).toLowerCase().includes(q)) &&
+          (!G.cat || g.cat == G.cat) &&
+          (!G.pri || g.pri == G.pri) &&
+          (!G.stat || g.status == G.stat),
+      )
+      .sort(
+        G.sort == "priority"
+          ? gs
+          : G.sort == "title"
+            ? (a, b) => a.title.localeCompare(b.title)
+            : (a, b) => (a.target || "9").localeCompare(b.target || "9"),
+      ),
+    op = (a, v) =>
+      a
+        .map(
+          (s) =>
+            `<option value="${s}" ${s == v ? "selected" : ""}>${t(s)}</option>`,
+        )
+        .join("");
+  $("#m").innerHTML =
+    cv(
+      "goals",
+      t("Priorities & Goals"),
+      t("Break big goals into milestones and track them to the finish."),
+    ) +
+    `<div class="tb"><input id="gq" placeholder="${t("Search goals…")}" aria-label="${t("Search goals…")}" value="${esc(G.q)}"><select id="gc" aria-label="${t("Category")}"><option value="">${t("All categories")}</option>${op(GC, G.cat)}</select><select id="gr" aria-label="${t("Priority")}"><option value="">${t("All priorities")}</option>${op(Object.keys(PR), G.pri)}</select><select id="gt" aria-label="${t("Status")}"><option value="">${t("All statuses")}</option>${op(GS, G.stat)}</select><select id="go" aria-label="${t("Sort")}"><option value="target" ${G.sort == "target" ? "selected" : ""}>${t("Sort: target date")}</option><option value="priority" ${G.sort == "priority" ? "selected" : ""}>${t("Sort: priority")}</option><option value="title" ${G.sort == "title" ? "selected" : ""}>${t("Sort: title")}</option></select><button class="btn" id="ga">${t("＋ Add goal")}</button></div><p class="mu">${t("{0} of {1} shown", l.length, S.gl.length)}</p><div class="g g2">` +
+    (l
+      .map((g) => {
+        const dn = g.status == "Completed",
+          late = !dn && g.target && g.target < TODAY,
+          soon = !dn && !late && g.target && g.target <= addD(TODAY, 7);
+        return `<div class="c"><div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px"><span class="tg">${t(g.cat)}</span><span class="tg ${g.pri == "Urgent" ? "overdue" : g.pri == "High" ? "soon" : ""}">${t(g.pri)}</span><span class="tg ${dn ? "done" : ""}">${t(g.status)}</span></div><h3 style="margin:0">${esc(g.title)}</h3><p class="mu" style="white-space:pre-line;margin:4px 0">${esc(g.desc)}</p><div class="mu">${g.start ? t("Start {0}", fmt(g.start)) + " · " : ""}${g.target ? (late ? '<b style="color:var(--bad)">' + t("Overdue") + " · </b>" : soon ? '<b style="color:var(--wn)">' + t("Approaching") + " · </b>" : "") + t("Target {0}", fmt(g.target)) : t("No target date")}</div>${bar(gp(g))}<div class="mu">${t("{0}% complete", gp(g))}</div>${g.ms.map((m, i) => `<label class="row" style="padding:3px 0"><input type="checkbox" data-gm="${g.id}:${i}" ${m.done ? "checked" : ""}><span ${m.done ? 'style="text-decoration:line-through;opacity:.6"' : ""}>${esc(m.t)}</span></label>`).join("")}${g.notes ? `<p class="mu" style="white-space:pre-line">${esc(g.notes)}</p>` : ""}<div style="margin-top:8px;display:flex;gap:6px"><button class="btn s sm" data-ge="${g.id}">${t("Edit")}</button>${dn ? "" : `<button class="btn s sm" data-gd="${g.id}">${t("Complete")}</button>`}<button class="btn s sm" data-gx="${g.id}">${t("Delete")}</button></div></div>`;
+      })
+      .join("") ||
+      '<div class="c mu">' +
+        t("No goals yet. Add as many as you need.") +
+        "</div>") +
+    "</div>";
+  const run = (id) => () => {
+    G.q = $("#gq").value;
+    G.cat = $("#gc").value;
+    G.pri = $("#gr").value;
+    G.stat = $("#gt").value;
+    G.sort = $("#go").value;
+    rr(id, goals);
+  };
+  [["#gq"], ["#gc"], ["#gr"], ["#gt"], ["#go"]].forEach(
+    ([i]) => ($(i).oninput = run(i)),
+  );
+  $("#ga").onclick = () => editGl();
+  document
+    .querySelectorAll("[data-ge]")
+    .forEach((e) => (e.onclick = () => editGl(e.dataset.ge)));
+  document.querySelectorAll("[data-gd]").forEach(
+    (e) =>
+      (e.onclick = () => {
+        const g = S.gl.find((y) => y.id == e.dataset.gd);
+        g.status = "Completed";
+        g.prog = 100;
+        g.ms.forEach((m) => (m.done = true));
+        save();
+        goals();
+        toast(t("Goal completed 🎉"));
+      }),
+  );
+  document.querySelectorAll("[data-gx]").forEach(
+    (e) =>
+      (e.onclick = () =>
+        ask(t("Delete this goal and its milestones?"), () => {
+          S.gl = S.gl.filter((y) => y.id != e.dataset.gx);
+          save();
+          goals();
+        })),
+  );
+  document.querySelectorAll("[data-gm]").forEach(
+    (e) =>
+      (e.onchange = () => {
+        const [i, n] = e.dataset.gm.split(":"),
+          g = S.gl.find((y) => y.id == i);
+        g.ms[+n].done = e.checked;
+        if (g.ms.some((m) => m.done) && g.status == "Not Started")
+          g.status = "In Progress";
+        if (g.ms.every((m) => m.done)) g.status = "Completed";
+        else if (g.status == "Completed") g.status = "In Progress";
+        save();
+        goals();
+      }),
+  );
+}
 /* ---- habits ---- */
-const WD=['sun','mon','tue','wed','thu','fri','sat'],WDA=['احد','اثنين','ثلاثاء','اربعاء','خميس','جمعة','سبت'],DNT=()=>['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(x=>t(x)),dayIdx=w=>{const n=w.toLowerCase().replace(/^ال/,'').replace(/[أإآ]/g,'ا'),e=WD.findIndex(d=>n.startsWith(d));return e>-1?e:WDA.findIndex(d=>n.startsWith(d.slice(0,3)))},HC=['Studying','Programming','Reading','Exercise','Personal development','Other'],FL={daily:'Daily',days:'Selected days',weekly:'Weekly'};
-const dow=s=>new Date(s+'T00:00').getDay(),wk=s=>addD(s,-((dow(s)+6)%7)),inGap=(h,d)=>(h.gaps||[]).some(g=>d>=g[0]&&(!g[1]||d<g[1]));
-const sched=(h,d)=>d>=h.start&&(!h.target||d<=h.target)&&!inGap(h,d)&&(h.freq!='days'||h.days.includes(dow(d)));
-function hst(h){const end=h.target&&h.target<TODAY?h.target:TODAY;let done=0,exp=0,streak=0;
-if(h.freq=='weekly'){const cw=wk(TODAY),got=w=>{for(let i=0;i<7;i++){const d=addD(w,i);if(h.log[d]&&sched(h,d))return 1}return 0},has=w=>{for(let i=0;i<7;i++){const d=addD(w,i);if(sched(h,d)&&d<=end)return 1}return 0};
-for(let w=wk(h.start);w<=wk(end);w=addD(w,7)){if(!has(w))continue;const x=got(w);if(w<cw||x){exp++;done+=x}}
-for(let w=cw;w>=wk(h.start);w=addD(w,-7)){if(!has(w))continue;if(got(w))streak++;else if(w!=cw)break}}
-else{for(let d=h.start;d<=end;d=addD(d,1)){if(!sched(h,d))continue;const x=h.log[d]?1:0;if(d==TODAY&&!x)continue;exp++;done+=x}
-for(let d=end;d>=h.start;d=addD(d,-1)){if(!sched(h,d))continue;if(h.log[d])streak++;else if(d!=TODAY)break}}
-return{done,exp,streak}}
-const tog=(id,d)=>{const h=S.hb.find(y=>y.id==id);if(h.log[d])delete h.log[d];else h.log[d]=true;save()};
-let HW=0;
-function editHb(id){const x=S.hb.find(y=>y.id==id)||{};modal(id?t('Edit habit'):t('Add habit'),[{k:'name',l:t('Habit name')},{k:'desc',l:t('Description'),t:'area'},{k:'cat',l:t('Category'),t:'select',tr:1,o:HC},{k:'freq',l:t('Frequency'),t:'select',tr:1,o:Object.values(FL)},{k:'days',l:t('Days (only for “Selected days”, e.g. Mon, Wed, Fri)')},{k:'start',l:t('Start date'),t:'date',req:1},{k:'target',l:t('Target date (optional)'),t:'date'},{k:'remind',l:t('Reminder time (optional, shown in the bell)'),t:'time'},{k:'notes',l:t('Notes'),t:'area'}],{cat:'Studying',start:TODAY,...x,freq:FL[x.freq||'daily'],days:(x.days||[]).map(i=>DNT()[i]).join(t(', '))},o=>{if(!o.name)return t('Please enter a name.');if(!o.start)return t('Choose a start date.');if(o.target&&o.target<o.start)return t('The target date is before the start date.');const f=Object.keys(FL).find(k=>FL[k]==o.freq);let days=[];if(f=='days'){days=[...new Set(o.days.split(/[\s,،]+/).filter(Boolean).map(dayIdx))];if(!days.length||days.includes(-1))return t('Enter valid weekdays, e.g. Mon, Wed, Fri.')}const r={...o,freq:f,days};if(id)Object.assign(x,r);else S.hb.push({id:uid(),log:{},gaps:[],paused:false,...r});save();show('habits');toast(t('Saved.'))})}
-function habits(){const ws=addD(wk(TODAY),HW*7),ds=[...Array(7)].map((_,i)=>addD(ws,i)),DN=DNT();
-const wd=Array(7).fill(0),we=Array(7).fill(0);S.hb.filter(h=>h.freq!='weekly').forEach(h=>{for(let i=0;i<56;i++){const d=addD(TODAY,-i);if(!sched(h,d)||(d==TODAY&&!h.log[d]))continue;we[dow(d)]++;if(h.log[d])wd[dow(d)]++}});
-$('#m').innerHTML=cv('habits',t('Habit Tracker'),t('Tick habits on the days they’re scheduled and watch your streaks grow.'))+`<div class="tb"><button class="btn s" id="hp">${t('◀ Previous')}</button><b style="flex:2;text-align:center">${fmt(ds[0])} – ${fmt(ds[6])}</b><button class="btn s" id="hn">${t('Next ▶')}</button><button class="btn s" id="ht">${t('This week')}</button><button class="btn" id="ha">${t('＋ Add habit')}</button></div>`+(S.hb.length?`<div class="tw"><table class="wide"><thead><tr><th>${t('Habit')}</th>${ds.map(d=>`<th style="text-align:center">${DN[dow(d)]}<br>${+d.slice(8)}</th>`).join('')}<th>${t('Streak')}</th><th>${t('Rate')}</th><th></th></tr></thead><tbody>`+S.hb.map(h=>{const s=hst(h),pz=inGap(h,TODAY);return`<tr class="${pz?'dn':''}"><td><b>${esc(h.name)}</b><div class="mu">${esc(t(h.cat))} · ${h.freq=='days'?h.days.map(i=>DN[i]).join(t(', ')):t(FL[h.freq])+(h.freq=='weekly'?' '+t('(any day)'):'')}${h.remind?' · ⏰ '+h.remind:''}${pz?' · '+t('paused'):''}</div></td>`+ds.map(d=>sched(h,d)&&d<=TODAY?`<td style="text-align:center"><input type="checkbox" data-hc="${h.id}|${d}" ${h.log[d]?'checked':''} aria-label="${esc(h.name)} ${d}"></td>`:'<td style="text-align:center" class="mu">·</td>').join('')+`<td>🔥 ${s.streak}${h.freq=='weekly'?' '+t('wk'):''}</td><td>${s.exp?pct(s.done,s.exp)+'%':'–'}<div class="mu">${s.done}/${s.exp}</div></td><td style="white-space:nowrap"><button class="btn s sm" data-he="${h.id}">${t('Edit')}</button> <button class="btn s sm" data-hz="${h.id}">${pz?t('Resume'):t('Pause')}</button> <button class="btn s sm" data-hx="${h.id}">${t('Delete')}</button></td></tr>`}).join('')+'</tbody></table></div>':'<div class="c mu">'+t('No habits yet. Add as many as you like.')+'</div>')+`<div class="c" style="margin-top:14px"><h3>${t('Consistency by weekday · last 8 weeks')}</h3>`+[1,2,3,4,5,6,0].map(i=>`<div style="display:flex;gap:10px;align-items:center;margin:4px 0"><span style="width:36px">${DN[i]}</span><div style="flex:1">${bar(pct(wd[i],we[i]))}</div><span class="mu" style="width:60px">${we[i]?pct(wd[i],we[i])+'%':'–'}</span></div>`).join('')+'<p class="mu">'+t('Only scheduled days count; unscheduled and paused days are ignored, and today is only counted once you’ve ticked it.')+'</p></div>';
-$('#hp').onclick=()=>{HW--;habits()};$('#hn').onclick=()=>{HW++;habits()};$('#ht').onclick=()=>{HW=0;habits()};$('#ha').onclick=()=>editHb();
-document.querySelectorAll('[data-hc]').forEach(e=>e.onchange=()=>{const[i,d]=e.dataset.hc.split('|');tog(i,d);habits()});
-document.querySelectorAll('[data-he]').forEach(e=>e.onclick=()=>editHb(e.dataset.he));
-document.querySelectorAll('[data-hz]').forEach(e=>e.onclick=()=>{const h=S.hb.find(y=>y.id==e.dataset.hz);h.gaps=h.gaps||[];if(inGap(h,TODAY)){h.gaps.forEach(g=>{if(!g[1])g[1]=TODAY});h.paused=false}else{h.gaps.push([TODAY,null]);h.paused=true}save();habits()});
-document.querySelectorAll('[data-hx]').forEach(e=>e.onclick=()=>{const h=S.hb.find(y=>y.id==e.dataset.hx);ask(t('Delete “{0}” and its {1} completion records? This cannot be undone.',h.name,Object.keys(h.log).length),()=>{S.hb=S.hb.filter(y=>y.id!=h.id);save();habits()})})}
+const WD = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"],
+  WDA = ["احد", "اثنين", "ثلاثاء", "اربعاء", "خميس", "جمعة", "سبت"],
+  DNT = () =>
+    ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((x) => t(x)),
+  dayIdx = (w) => {
+    const n = w.toLowerCase().replace(/^ال/, "").replace(/[أإآ]/g, "ا"),
+      e = WD.findIndex((d) => n.startsWith(d));
+    return e > -1 ? e : WDA.findIndex((d) => n.startsWith(d.slice(0, 3)));
+  },
+  HC = [
+    "Studying",
+    "Programming",
+    "Reading",
+    "Exercise",
+    "Personal development",
+    "Other",
+  ],
+  FL = { daily: "Daily", days: "Selected days", weekly: "Weekly" };
+const dow = (s) => new Date(s + "T00:00").getDay(),
+  wk = (s) => addD(s, -((dow(s) + 6) % 7)),
+  inGap = (h, d) =>
+    (h.gaps || []).some((g) => d >= g[0] && (!g[1] || d < g[1]));
+const sched = (h, d) =>
+  d >= h.start &&
+  (!h.target || d <= h.target) &&
+  !inGap(h, d) &&
+  (h.freq != "days" || h.days.includes(dow(d)));
+function hst(h) {
+  const end = h.target && h.target < TODAY ? h.target : TODAY;
+  let done = 0,
+    exp = 0,
+    streak = 0;
+  if (h.freq == "weekly") {
+    const cw = wk(TODAY),
+      got = (w) => {
+        for (let i = 0; i < 7; i++) {
+          const d = addD(w, i);
+          if (h.log[d] && sched(h, d)) return 1;
+        }
+        return 0;
+      },
+      has = (w) => {
+        for (let i = 0; i < 7; i++) {
+          const d = addD(w, i);
+          if (sched(h, d) && d <= end) return 1;
+        }
+        return 0;
+      };
+    for (let w = wk(h.start); w <= wk(end); w = addD(w, 7)) {
+      if (!has(w)) continue;
+      const x = got(w);
+      if (w < cw || x) {
+        exp++;
+        done += x;
+      }
+    }
+    for (let w = cw; w >= wk(h.start); w = addD(w, -7)) {
+      if (!has(w)) continue;
+      if (got(w)) streak++;
+      else if (w != cw) break;
+    }
+  } else {
+    for (let d = h.start; d <= end; d = addD(d, 1)) {
+      if (!sched(h, d)) continue;
+      const x = h.log[d] ? 1 : 0;
+      if (d == TODAY && !x) continue;
+      exp++;
+      done += x;
+    }
+    for (let d = end; d >= h.start; d = addD(d, -1)) {
+      if (!sched(h, d)) continue;
+      if (h.log[d]) streak++;
+      else if (d != TODAY) break;
+    }
+  }
+  return { done, exp, streak };
+}
+const tog = (id, d) => {
+  const h = S.hb.find((y) => y.id == id);
+  if (h.log[d]) delete h.log[d];
+  else h.log[d] = true;
+  save();
+};
+let HW = 0;
+function editHb(id) {
+  const x = S.hb.find((y) => y.id == id) || {};
+  modal(
+    id ? t("Edit habit") : t("Add habit"),
+    [
+      { k: "name", l: t("Habit name") },
+      { k: "desc", l: t("Description"), t: "area" },
+      { k: "cat", l: t("Category"), t: "select", tr: 1, o: HC },
+      {
+        k: "freq",
+        l: t("Frequency"),
+        t: "select",
+        tr: 1,
+        o: Object.values(FL),
+      },
+      {
+        k: "days",
+        l: t("Days (only for “Selected days”, e.g. Mon, Wed, Fri)"),
+      },
+      { k: "start", l: t("Start date"), t: "date", req: 1 },
+      { k: "target", l: t("Target date (optional)"), t: "date" },
+      {
+        k: "remind",
+        l: t("Reminder time (optional, shown in the bell)"),
+        t: "time",
+      },
+      { k: "notes", l: t("Notes"), t: "area" },
+    ],
+    {
+      cat: "Studying",
+      start: TODAY,
+      ...x,
+      freq: FL[x.freq || "daily"],
+      days: (x.days || []).map((i) => DNT()[i]).join(t(", ")),
+    },
+    (o) => {
+      if (!o.name) return t("Please enter a name.");
+      if (!o.start) return t("Choose a start date.");
+      if (o.target && o.target < o.start)
+        return t("The target date is before the start date.");
+      const f = Object.keys(FL).find((k) => FL[k] == o.freq);
+      let days = [];
+      if (f == "days") {
+        days = [
+          ...new Set(
+            o.days
+              .split(/[\s,،]+/)
+              .filter(Boolean)
+              .map(dayIdx),
+          ),
+        ];
+        if (!days.length || days.includes(-1))
+          return t("Enter valid weekdays, e.g. Mon, Wed, Fri.");
+      }
+      const r = { ...o, freq: f, days };
+      if (id) Object.assign(x, r);
+      else S.hb.push({ id: uid(), log: {}, gaps: [], paused: false, ...r });
+      save();
+      show("habits");
+      toast(t("Saved."));
+    },
+  );
+}
+function habits() {
+  const ws = addD(wk(TODAY), HW * 7),
+    ds = [...Array(7)].map((_, i) => addD(ws, i)),
+    DN = DNT();
+  const wd = Array(7).fill(0),
+    we = Array(7).fill(0);
+  S.hb
+    .filter((h) => h.freq != "weekly")
+    .forEach((h) => {
+      for (let i = 0; i < 56; i++) {
+        const d = addD(TODAY, -i);
+        if (!sched(h, d) || (d == TODAY && !h.log[d])) continue;
+        we[dow(d)]++;
+        if (h.log[d]) wd[dow(d)]++;
+      }
+    });
+  $("#m").innerHTML =
+    cv(
+      "habits",
+      t("Habit Tracker"),
+      t(
+        "Tick habits on the days they’re scheduled and watch your streaks grow.",
+      ),
+    ) +
+    `<div class="tb"><button class="btn s" id="hp">${t("◀ Previous")}</button><b style="flex:2;text-align:center">${fmt(ds[0])} – ${fmt(ds[6])}</b><button class="btn s" id="hn">${t("Next ▶")}</button><button class="btn s" id="ht">${t("This week")}</button><button class="btn" id="ha">${t("＋ Add habit")}</button></div>` +
+    (S.hb.length
+      ? `<div class="tw"><table class="wide"><thead><tr><th>${t("Habit")}</th>${ds.map((d) => `<th style="text-align:center">${DN[dow(d)]}<br>${+d.slice(8)}</th>`).join("")}<th>${t("Streak")}</th><th>${t("Rate")}</th><th></th></tr></thead><tbody>` +
+        S.hb
+          .map((h) => {
+            const s = hst(h),
+              pz = inGap(h, TODAY);
+            return (
+              `<tr class="${pz ? "dn" : ""}"><td><b>${esc(h.name)}</b><div class="mu">${esc(t(h.cat))} · ${h.freq == "days" ? h.days.map((i) => DN[i]).join(t(", ")) : t(FL[h.freq]) + (h.freq == "weekly" ? " " + t("(any day)") : "")}${h.remind ? " · ⏰ " + h.remind : ""}${pz ? " · " + t("paused") : ""}</div></td>` +
+              ds
+                .map((d) =>
+                  sched(h, d) && d <= TODAY
+                    ? `<td style="text-align:center"><input type="checkbox" data-hc="${h.id}|${d}" ${h.log[d] ? "checked" : ""} aria-label="${esc(h.name)} ${d}"></td>`
+                    : '<td style="text-align:center" class="mu">·</td>',
+                )
+                .join("") +
+              `<td>🔥 ${s.streak}${h.freq == "weekly" ? " " + t("wk") : ""}</td><td>${s.exp ? pct(s.done, s.exp) + "%" : "–"}<div class="mu">${s.done}/${s.exp}</div></td><td style="white-space:nowrap"><button class="btn s sm" data-he="${h.id}">${t("Edit")}</button> <button class="btn s sm" data-hz="${h.id}">${pz ? t("Resume") : t("Pause")}</button> <button class="btn s sm" data-hx="${h.id}">${t("Delete")}</button></td></tr>`
+            );
+          })
+          .join("") +
+        "</tbody></table></div>"
+      : '<div class="c mu">' +
+        t("No habits yet. Add as many as you like.") +
+        "</div>") +
+    `<div class="c" style="margin-top:14px"><h3>${t("Consistency by weekday · last 8 weeks")}</h3>` +
+    [1, 2, 3, 4, 5, 6, 0]
+      .map(
+        (i) =>
+          `<div style="display:flex;gap:10px;align-items:center;margin:4px 0"><span style="width:36px">${DN[i]}</span><div style="flex:1">${bar(pct(wd[i], we[i]))}</div><span class="mu" style="width:60px">${we[i] ? pct(wd[i], we[i]) + "%" : "–"}</span></div>`,
+      )
+      .join("") +
+    '<p class="mu">' +
+    t(
+      "Only scheduled days count; unscheduled and paused days are ignored, and today is only counted once you’ve ticked it.",
+    ) +
+    "</p></div>";
+  $("#hp").onclick = () => {
+    HW--;
+    habits();
+  };
+  $("#hn").onclick = () => {
+    HW++;
+    habits();
+  };
+  $("#ht").onclick = () => {
+    HW = 0;
+    habits();
+  };
+  $("#ha").onclick = () => editHb();
+  document.querySelectorAll("[data-hc]").forEach(
+    (e) =>
+      (e.onchange = () => {
+        const [i, d] = e.dataset.hc.split("|");
+        tog(i, d);
+        habits();
+      }),
+  );
+  document
+    .querySelectorAll("[data-he]")
+    .forEach((e) => (e.onclick = () => editHb(e.dataset.he)));
+  document.querySelectorAll("[data-hz]").forEach(
+    (e) =>
+      (e.onclick = () => {
+        const h = S.hb.find((y) => y.id == e.dataset.hz);
+        h.gaps = h.gaps || [];
+        if (inGap(h, TODAY)) {
+          h.gaps.forEach((g) => {
+            if (!g[1]) g[1] = TODAY;
+          });
+          h.paused = false;
+        } else {
+          h.gaps.push([TODAY, null]);
+          h.paused = true;
+        }
+        save();
+        habits();
+      }),
+  );
+  document.querySelectorAll("[data-hx]").forEach(
+    (e) =>
+      (e.onclick = () => {
+        const h = S.hb.find((y) => y.id == e.dataset.hx);
+        ask(
+          t(
+            "Delete “{0}” and its {1} completion records? This cannot be undone.",
+            h.name,
+            Object.keys(h.log).length,
+          ),
+          () => {
+            S.hb = S.hb.filter((y) => y.id != h.id);
+            save();
+            habits();
+          },
+        );
+      }),
+  );
+}
 /* ---- budget (SDG) ---- */
-const money=n=>Math.round(+n||0).toLocaleString('en-US')+' '+t('SDG'),bnm=id=>{const c=[...S.bg.cats,...S.bg.src,...S.bg.sv].find(c=>c.id==id);return c?t(c.name):t('Removed')};
-const bsum=mo=>{const t=S.bg.tx.filter(x=>x.date.startsWith(mo)),s=ty=>t.filter(x=>x.type==ty).reduce((a,x)=>a+x.amt,0),inc=s('Income'),exp=s('Expense'),sav=s('Saving'),plan=S.bg.plan[mo]||0;return{t,inc,exp,sav,plan,rem:plan-exp,avail:inc-exp-sav}};
-let BM=TODAY.slice(0,7),BF={type:'',cat:'',q:'',all:false};
-function mg(kind,id){const L=S.bg[kind],x=L.find(c=>c.id==id)||{},fk=kind=='cats'?'limit':kind=='sv'?'target':null;modal(t((id?'Edit ':'Add ')+({cats:'category',src:'income source',sv:'savings goal'})[kind]),[{k:'name',l:t('Name')},...(fk?[{k:fk,l:t(fk=='limit'?'Monthly spending limit (SDG, 0 = none)':'Target amount (SDG, 0 = none)'),t:'number',n:1}]:[])],{...x},o=>{if(!o.name)return t('Please enter a name.');if(L.some(c=>c.id!=id&&c.name.toLowerCase()==o.name.toLowerCase()))return t('That name already exists.');if(fk)o[fk]=Math.max(0,+o[fk]||0);if(id)Object.assign(x,o);else L.push({id:uid(),...o});save();show('budget')})}
-function editTx(id){const x=S.bg.tx.find(t=>t.id==id)||{},opts=[...S.bg.src.map(c=>['Income','Income: '+c.name,c.id,t('Income')+': '+t(c.name)]),...S.bg.cats.map(c=>['Expense','Expense: '+c.name,c.id,t('Expense')+': '+t(c.name)]),...S.bg.sv.map(c=>['Saving','Saving: '+c.name,c.id,t('Saving')+': '+t(c.name)])],cur=opts.find(o=>o[2]==x.cat);
-modal(id?t('Edit transaction'):t('Add transaction'),[{k:'type',l:t('Type'),t:'select',tr:1,o:['Expense','Income','Saving']},{k:'date',l:t('Date'),t:'date',req:1},{k:'amt',l:t('Amount (SDG)'),t:'number',n:1},{k:'cat',l:t('Category, income source or savings goal (must match the type)'),t:'select',o:opts.map(o=>[o[1],o[3]])},{k:'desc',l:t('Description')},{k:'notes',l:t('Notes (optional)'),t:'area'}],{type:'Expense',date:TODAY,...x,cat:cur?cur[1]:''},o=>{const c=opts.find(p=>p[1]==o.cat),a=+o.amt;if(!c||c[0]!=o.type)return t('Choose an option that matches the type ({0}).',t(o.type));if(!(a>0))return t('Enter an amount greater than 0.');if(!o.date)return t('Choose a date.');const r={type:o.type,date:o.date,amt:a,cat:c[2],desc:o.desc,notes:o.notes};if(id)Object.assign(x,r);else S.bg.tx.push({id:uid(),...r});BM=o.date.slice(0,7);save();show('budget');toast(t('Saved.'))})}
-function budget(){const m=bsum(BM),by={},B=S.bg;m.t.filter(x=>x.type=='Expense').forEach(x=>by[x.cat]=(by[x.cat]||0)+x.amt);const w=[];B.cats.forEach(c=>{const s=by[c.id]||0;if(c.limit>0&&s>=.8*c.limit)w.push(`${esc(t(c.name))}: ${s>c.limit?t('over its limit'):t('{0}% of limit',pct(s,c.limit))} (${t('{0} of {1}',money(s),money(c.limit))})`)});if(m.plan>0&&m.exp>=.8*m.plan)w.push(`${t('Monthly budget:')} ${m.exp>m.plan?t('exceeded'):t('{0}% used',pct(m.exp,m.plan))} (${t('{0} of {1}',money(m.exp),money(m.plan))})`);
-const q=BF.q.toLowerCase(),tx=B.tx.filter(x=>(BF.all||x.date.startsWith(BM))&&(!BF.type||x.type==BF.type)&&(!BF.cat||x.cat==BF.cat)&&(!q||(x.desc+x.notes).toLowerCase().includes(q))).sort((a,b)=>b.date.localeCompare(a.date)),mx=Math.max(1,...B.cats.map(c=>by[c.id]||0)),list=(k,l,ex)=>`<div class="c"><h3>${l} <button class="btn s sm" data-ma="${k}">${t('＋ Add')}</button></h3>`+(B[k].map(c=>`<div class="row"><div>${esc(t(c.name))}${ex(c)?` <span class="mu">${ex(c)}</span>`:''}</div><button class="btn s sm" data-me="${k}|${c.id}">${t('Edit')}</button><button class="btn s sm" data-mx="${k}|${c.id}">${t('Delete')}</button></div>`).join('')||'<p class="mu">'+t('None yet.')+'</p>')+'</div>';
-$('#m').innerHTML=cv('budget',t('Student Budget'),t('Plan, track and review your money in Sudanese Pounds (SDG).'))+`<div class="tb">${dpField('',BM,'month',{id:'bm',label:t('Month'),abs:1})}<button class="btn" id="bt">${t('＋ Transaction')}</button><button class="btn s" id="bp">${t('Set monthly budget')}</button><button class="btn s" id="br">${t('Reset monthly plan')}</button></div>`+(w.length?`<div class="c" style="border-color:var(--wn);margin-bottom:14px"><h3>⚠️ ${t('Budget warnings')}</h3>${w.map(x=>`<div class="row">${x}</div>`).join('')}</div>`:'')+
-`<div class="g g4"><div class="c"><div class="big" style="color:var(--ok);font-size:22px">${money(m.inc)}</div><div class="mu">${t('Income')}</div></div><div class="c"><div class="big" style="color:var(--bad);font-size:22px">${money(m.exp)}</div><div class="mu">${t('Expenses')}</div></div><div class="c"><div class="big" style="font-size:22px">${m.plan?money(m.rem):t('Not set')}</div><div class="mu">${t('Remaining budget')}${m.plan?' '+t('of {0}',money(m.plan)):''}</div>${m.plan?bar(Math.min(100,pct(m.exp,m.plan))):''}</div><div class="c"><div class="big" style="font-size:22px">${money(m.avail)}</div><div class="mu">${t('Available funds (income − expenses − savings)')}</div></div><div class="c"><div class="big" style="font-size:22px">${money(m.sav)}</div><div class="mu">${t('Saved this month')}</div></div></div>
-<div class="g g2" style="margin-top:14px"><div class="c"><h3>${t('Spending by category')}</h3>${B.cats.map(c=>{const s=by[c.id]||0,p=c.limit>0?pct(s,c.limit):pct(s,mx);return`<div style="margin:8px 0"><div style="display:flex;justify-content:space-between"><span>${esc(t(c.name))}</span><span class="mu">${money(s)}${c.limit>0?' / '+money(c.limit):''}</span></div><div class="bar"><b style="width:${Math.min(100,p)}%;background:${c.limit>0&&s>c.limit?'var(--bad)':c.limit>0&&s>=.8*c.limit?'var(--wn)':'var(--ac)'}"></b></div></div>`}).join('')}</div>
-<div class="c"><h3>${t('Savings goals')} <button class="btn s sm" data-ma="sv">${t('＋ Add')}</button></h3>${B.sv.map(g=>{const sv=B.tx.filter(t=>t.type=='Saving'&&t.cat==g.id).reduce((a,t)=>a+t.amt,0);return`<div style="margin:8px 0"><div style="display:flex;justify-content:space-between"><span>${esc(t(g.name))}</span><span class="mu">${money(sv)}${g.target>0?' / '+money(g.target):''}</span></div>${g.target>0?bar(Math.min(100,pct(sv,g.target))):''}<button class="btn s sm" data-me="sv|${g.id}">${t('Edit')}</button> <button class="btn s sm" data-mx="sv|${g.id}">${t('Delete')}</button></div>`}).join('')||'<p class="mu">'+t('No savings goals.')+'</p>'}</div>
-<div class="c"><h3>${t('Upcoming obligations')} <button class="btn s sm" id="bd">${t('＋ Add')}</button></h3>${B.due.slice().sort((a,b)=>a.date.localeCompare(b.date)).map(d=>`<div class="row"><div><b>${esc(d.title)}</b><div class="mu">${fmt(d.date)}${d.date<TODAY?' · '+t('past due date'):''}</div></div><b>${money(d.amt)}</b><button class="btn s sm" data-dx="${d.id}">${t('Remove')}</button></div>`).join('')||'<p class="mu">'+t('Nothing recorded.')+'</p>'}</div>
-${list('cats',t('Expense categories'),c=>c.limit>0?t('limit {0}',money(c.limit)):'')}${list('src',t('Income sources'),()=>'')}</div>
-<h3 style="margin-top:18px">${t('Transactions')}</h3><div class="tb"><select id="bty" aria-label="${t('Type')}"><option value="">${t('All types')}</option>${['Income','Expense','Saving'].map(ty=>`<option value="${ty}" ${ty==BF.type?'selected':''}>${t(ty)}</option>`).join('')}</select><select id="bcat" aria-label="${t('Category')}"><option value="">${t('All categories')}</option>${[...B.src,...B.cats,...B.sv].map(c=>`<option value="${c.id}" ${c.id==BF.cat?'selected':''}>${esc(t(c.name))}</option>`).join('')}</select><input id="bsq" placeholder="${t('Search description…')}" aria-label="${t('Search description…')}" value="${esc(BF.q)}"><label style="flex:0 0 auto"><input type="checkbox" id="ball" ${BF.all?'checked':''}> ${t('All months')}</label></div>
-<div class="tw"><table><thead><tr><th>${t('Date')}</th><th>${t('Type')}</th><th>${t('Category')}</th><th>${t('Description')}</th><th>${t('Amount')}</th><th></th></tr></thead><tbody>${tx.map(x=>`<tr><td>${fmt(x.date)}</td><td><span class="tg ${x.type=='Expense'?'overdue':'done'}">${t(x.type)}</span></td><td>${esc(bnm(x.cat))}</td><td>${esc(x.desc)}<div class="mu">${esc(x.notes)}</div></td><td><b>${x.type=='Income'?'+':'−'}${money(x.amt)}</b></td><td style="white-space:nowrap"><button class="btn s sm" data-te="${x.id}">${t('Edit')}</button> <button class="btn s sm" data-tx="${x.id}">${t('Delete')}</button></td></tr>`).join('')||'<tr><td colspan="6" class="mu">'+t('No transactions for these filters.')+'</td></tr>'}</tbody></table></div><p class="mu">${t('All figures come from the transactions you enter. Amounts are in SDG with no currency conversion. Resetting the monthly plan never deletes transactions.')}</p>`;
-dpWire($('#m'));$('#bm').onchange=()=>{BM=$('#bm').value||BM;budget()};$('#bt').onclick=()=>editTx();
-$('#bp').onclick=()=>modal(t('Monthly budget for {0}',mlab(BM)),[{k:'b',l:t('Planned spending limit (SDG)'),t:'number',n:1}],{b:m.plan||''},o=>{const v=+o.b;if(!(v>0))return t('Enter an amount greater than 0.');B.plan[BM]=v;save();budget()});
-$('#br').onclick=()=>ask(t('Reset the planned budget for {0} and all category limits? Your transactions are kept.',mlab(BM)),()=>{delete B.plan[BM];B.cats.forEach(c=>c.limit=0);save();budget();toast(t('Plan reset. Transactions kept.'))},t('Reset'));
-$('#bd').onclick=()=>modal(t('Add obligation'),[{k:'title',l:t('What is due?')},{k:'date',l:t('Due date'),t:'date',req:1},{k:'amt',l:t('Amount (SDG)'),t:'number',n:1}],{date:TODAY},o=>{if(!o.title||!o.date||!(+o.amt>0))return t('Enter a title, a date and an amount above 0.');B.due.push({id:uid(),title:o.title,date:o.date,amt:+o.amt});save();budget()});
-document.querySelectorAll('[data-dx]').forEach(e=>e.onclick=()=>{B.due=B.due.filter(d=>d.id!=e.dataset.dx);save();budget()});
-const bf=id=>()=>{BF.type=$('#bty').value;BF.cat=$('#bcat').value;BF.q=$('#bsq').value;BF.all=$('#ball').checked;rr(id,budget)};['#bty','#bcat','#bsq','#ball'].forEach(i=>$(i).oninput=bf(i));
-document.querySelectorAll('[data-ma]').forEach(e=>e.onclick=()=>mg(e.dataset.ma));document.querySelectorAll('[data-me]').forEach(e=>e.onclick=()=>mg(...e.dataset.me.split('|')));
-document.querySelectorAll('[data-mx]').forEach(e=>e.onclick=()=>{const[k,id]=e.dataset.mx.split('|'),n=B.tx.filter(t=>t.cat==id).length;if(n)return toast(t('It has {0} transactions. Rename it instead so your history stays intact.',n));if(B[k].length<2&&k!='sv')return toast(t('Keep at least one.'));ask(t('Delete “{0}”?',bnm(id)),()=>{B[k]=B[k].filter(c=>c.id!=id);save();budget()})});
-document.querySelectorAll('[data-te]').forEach(e=>e.onclick=()=>editTx(e.dataset.te));
-document.querySelectorAll('[data-tx]').forEach(e=>e.onclick=()=>{const x=B.tx.find(t=>t.id==e.dataset.tx);ask(t('Delete this transaction ({0}) of {1} from {2}? Totals will update.',t(x.type),money(x.amt),fmt(x.date)),()=>{B.tx=B.tx.filter(t=>t.id!=x.id);save();budget()})})}
+const money = (n) =>
+    Math.round(+n || 0).toLocaleString("en-US") + " " + t("SDG"),
+  bnm = (id) => {
+    const c = [...S.bg.cats, ...S.bg.src, ...S.bg.sv].find((c) => c.id == id);
+    return c ? t(c.name) : t("Removed");
+  };
+const bsum = (mo) => {
+  const t = S.bg.tx.filter((x) => x.date.startsWith(mo)),
+    s = (ty) => t.filter((x) => x.type == ty).reduce((a, x) => a + x.amt, 0),
+    inc = s("Income"),
+    exp = s("Expense"),
+    sav = s("Saving"),
+    plan = S.bg.plan[mo] || 0;
+  return { t, inc, exp, sav, plan, rem: plan - exp, avail: inc - exp - sav };
+};
+let BM = TODAY.slice(0, 7),
+  BF = { type: "", cat: "", q: "", all: false };
+function mg(kind, id) {
+  const L = S.bg[kind],
+    x = L.find((c) => c.id == id) || {},
+    fk = kind == "cats" ? "limit" : kind == "sv" ? "target" : null;
+  modal(
+    t(
+      (id ? "Edit " : "Add ") +
+        { cats: "category", src: "income source", sv: "savings goal" }[kind],
+    ),
+    [
+      { k: "name", l: t("Name") },
+      ...(fk
+        ? [
+            {
+              k: fk,
+              l: t(
+                fk == "limit"
+                  ? "Monthly spending limit (SDG, 0 = none)"
+                  : "Target amount (SDG, 0 = none)",
+              ),
+              t: "number",
+              n: 1,
+            },
+          ]
+        : []),
+    ],
+    { ...x },
+    (o) => {
+      if (!o.name) return t("Please enter a name.");
+      if (
+        L.some(
+          (c) => c.id != id && c.name.toLowerCase() == o.name.toLowerCase(),
+        )
+      )
+        return t("That name already exists.");
+      if (fk) o[fk] = Math.max(0, +o[fk] || 0);
+      if (id) Object.assign(x, o);
+      else L.push({ id: uid(), ...o });
+      save();
+      show("budget");
+    },
+  );
+}
+function editTx(id) {
+  const x = S.bg.tx.find((t) => t.id == id) || {},
+    opts = [
+      ...S.bg.src.map((c) => [
+        "Income",
+        "Income: " + c.name,
+        c.id,
+        t("Income") + ": " + t(c.name),
+      ]),
+      ...S.bg.cats.map((c) => [
+        "Expense",
+        "Expense: " + c.name,
+        c.id,
+        t("Expense") + ": " + t(c.name),
+      ]),
+      ...S.bg.sv.map((c) => [
+        "Saving",
+        "Saving: " + c.name,
+        c.id,
+        t("Saving") + ": " + t(c.name),
+      ]),
+    ],
+    cur = opts.find((o) => o[2] == x.cat);
+  modal(
+    id ? t("Edit transaction") : t("Add transaction"),
+    [
+      {
+        k: "type",
+        l: t("Type"),
+        t: "select",
+        tr: 1,
+        o: ["Expense", "Income", "Saving"],
+      },
+      { k: "date", l: t("Date"), t: "date", req: 1 },
+      { k: "amt", l: t("Amount (SDG)"), t: "number", n: 1 },
+      {
+        k: "cat",
+        l: t("Category, income source or savings goal (must match the type)"),
+        t: "select",
+        o: opts.map((o) => [o[1], o[3]]),
+      },
+      { k: "desc", l: t("Description") },
+      { k: "notes", l: t("Notes (optional)"), t: "area" },
+    ],
+    { type: "Expense", date: TODAY, ...x, cat: cur ? cur[1] : "" },
+    (o) => {
+      const c = opts.find((p) => p[1] == o.cat),
+        a = +o.amt;
+      if (!c || c[0] != o.type)
+        return t("Choose an option that matches the type ({0}).", t(o.type));
+      if (!(a > 0)) return t("Enter an amount greater than 0.");
+      if (!o.date) return t("Choose a date.");
+      const r = {
+        type: o.type,
+        date: o.date,
+        amt: a,
+        cat: c[2],
+        desc: o.desc,
+        notes: o.notes,
+      };
+      if (id) Object.assign(x, r);
+      else S.bg.tx.push({ id: uid(), ...r });
+      BM = o.date.slice(0, 7);
+      save();
+      show("budget");
+      toast(t("Saved."));
+    },
+  );
+}
+function budget() {
+  const m = bsum(BM),
+    by = {},
+    B = S.bg;
+  m.t
+    .filter((x) => x.type == "Expense")
+    .forEach((x) => (by[x.cat] = (by[x.cat] || 0) + x.amt));
+  const w = [];
+  B.cats.forEach((c) => {
+    const s = by[c.id] || 0;
+    if (c.limit > 0 && s >= 0.8 * c.limit)
+      w.push(
+        `${esc(t(c.name))}: ${s > c.limit ? t("over its limit") : t("{0}% of limit", pct(s, c.limit))} (${t("{0} of {1}", money(s), money(c.limit))})`,
+      );
+  });
+  if (m.plan > 0 && m.exp >= 0.8 * m.plan)
+    w.push(
+      `${t("Monthly budget:")} ${m.exp > m.plan ? t("exceeded") : t("{0}% used", pct(m.exp, m.plan))} (${t("{0} of {1}", money(m.exp), money(m.plan))})`,
+    );
+  const q = BF.q.toLowerCase(),
+    tx = B.tx
+      .filter(
+        (x) =>
+          (BF.all || x.date.startsWith(BM)) &&
+          (!BF.type || x.type == BF.type) &&
+          (!BF.cat || x.cat == BF.cat) &&
+          (!q || (x.desc + x.notes).toLowerCase().includes(q)),
+      )
+      .sort((a, b) => b.date.localeCompare(a.date)),
+    mx = Math.max(1, ...B.cats.map((c) => by[c.id] || 0)),
+    list = (k, l, ex) =>
+      `<div class="c"><h3>${l} <button class="btn s sm" data-ma="${k}">${t("＋ Add")}</button></h3>` +
+      (B[k]
+        .map(
+          (c) =>
+            `<div class="row"><div>${esc(t(c.name))}${ex(c) ? ` <span class="mu">${ex(c)}</span>` : ""}</div><button class="btn s sm" data-me="${k}|${c.id}">${t("Edit")}</button><button class="btn s sm" data-mx="${k}|${c.id}">${t("Delete")}</button></div>`,
+        )
+        .join("") || '<p class="mu">' + t("None yet.") + "</p>") +
+      "</div>";
+  $("#m").innerHTML =
+    cv(
+      "budget",
+      t("Student Budget"),
+      t("Plan, track and review your money in Sudanese Pounds (SDG)."),
+    ) +
+    `<div class="tb">${dpField("", BM, "month", { id: "bm", label: t("Month"), abs: 1 })}<button class="btn" id="bt">${t("＋ Transaction")}</button><button class="btn s" id="bp">${t("Set monthly budget")}</button><button class="btn s" id="br">${t("Reset monthly plan")}</button></div>` +
+    (w.length
+      ? `<div class="c" style="border-color:var(--wn);margin-bottom:14px"><h3>⚠️ ${t("Budget warnings")}</h3>${w.map((x) => `<div class="row">${x}</div>`).join("")}</div>`
+      : "") +
+    `<div class="g g4"><div class="c"><div class="big" style="color:var(--ok);font-size:22px">${money(m.inc)}</div><div class="mu">${t("Income")}</div></div><div class="c"><div class="big" style="color:var(--bad);font-size:22px">${money(m.exp)}</div><div class="mu">${t("Expenses")}</div></div><div class="c"><div class="big" style="font-size:22px">${m.plan ? money(m.rem) : t("Not set")}</div><div class="mu">${t("Remaining budget")}${m.plan ? " " + t("of {0}", money(m.plan)) : ""}</div>${m.plan ? bar(Math.min(100, pct(m.exp, m.plan))) : ""}</div><div class="c"><div class="big" style="font-size:22px">${money(m.avail)}</div><div class="mu">${t("Available funds (income − expenses − savings)")}</div></div><div class="c"><div class="big" style="font-size:22px">${money(m.sav)}</div><div class="mu">${t("Saved this month")}</div></div></div>
+<div class="g g2" style="margin-top:14px"><div class="c"><h3>${t("Spending by category")}</h3>${B.cats
+      .map((c) => {
+        const s = by[c.id] || 0,
+          p = c.limit > 0 ? pct(s, c.limit) : pct(s, mx);
+        return `<div style="margin:8px 0"><div style="display:flex;justify-content:space-between"><span>${esc(t(c.name))}</span><span class="mu">${money(s)}${c.limit > 0 ? " / " + money(c.limit) : ""}</span></div><div class="bar"><b style="width:${Math.min(100, p)}%;background:${c.limit > 0 && s > c.limit ? "var(--bad)" : c.limit > 0 && s >= 0.8 * c.limit ? "var(--wn)" : "var(--ac)"}"></b></div></div>`;
+      })
+      .join("")}</div>
+<div class="c"><h3>${t("Savings goals")} <button class="btn s sm" data-ma="sv">${t("＋ Add")}</button></h3>${
+      B.sv
+        .map((g) => {
+          const sv = B.tx
+            .filter((t) => t.type == "Saving" && t.cat == g.id)
+            .reduce((a, t) => a + t.amt, 0);
+          return `<div style="margin:8px 0"><div style="display:flex;justify-content:space-between"><span>${esc(t(g.name))}</span><span class="mu">${money(sv)}${g.target > 0 ? " / " + money(g.target) : ""}</span></div>${g.target > 0 ? bar(Math.min(100, pct(sv, g.target))) : ""}<button class="btn s sm" data-me="sv|${g.id}">${t("Edit")}</button> <button class="btn s sm" data-mx="sv|${g.id}">${t("Delete")}</button></div>`;
+        })
+        .join("") || '<p class="mu">' + t("No savings goals.") + "</p>"
+    }</div>
+<div class="c"><h3>${t("Upcoming obligations")} <button class="btn s sm" id="bd">${t("＋ Add")}</button></h3>${
+      B.due
+        .slice()
+        .sort((a, b) => a.date.localeCompare(b.date))
+        .map(
+          (d) =>
+            `<div class="row"><div><b>${esc(d.title)}</b><div class="mu">${fmt(d.date)}${d.date < TODAY ? " · " + t("past due date") : ""}</div></div><b>${money(d.amt)}</b><button class="btn s sm" data-dx="${d.id}">${t("Remove")}</button></div>`,
+        )
+        .join("") || '<p class="mu">' + t("Nothing recorded.") + "</p>"
+    }</div>
+${list("cats", t("Expense categories"), (c) => (c.limit > 0 ? t("limit {0}", money(c.limit)) : ""))}${list("src", t("Income sources"), () => "")}</div>
+<h3 style="margin-top:18px">${t("Transactions")}</h3><div class="tb"><select id="bty" aria-label="${t("Type")}"><option value="">${t("All types")}</option>${["Income", "Expense", "Saving"].map((ty) => `<option value="${ty}" ${ty == BF.type ? "selected" : ""}>${t(ty)}</option>`).join("")}</select><select id="bcat" aria-label="${t("Category")}"><option value="">${t("All categories")}</option>${[...B.src, ...B.cats, ...B.sv].map((c) => `<option value="${c.id}" ${c.id == BF.cat ? "selected" : ""}>${esc(t(c.name))}</option>`).join("")}</select><input id="bsq" placeholder="${t("Search description…")}" aria-label="${t("Search description…")}" value="${esc(BF.q)}"><label style="flex:0 0 auto"><input type="checkbox" id="ball" ${BF.all ? "checked" : ""}> ${t("All months")}</label></div>
+<div class="tw"><table><thead><tr><th>${t("Date")}</th><th>${t("Type")}</th><th>${t("Category")}</th><th>${t("Description")}</th><th>${t("Amount")}</th><th></th></tr></thead><tbody>${tx.map((x) => `<tr><td>${fmt(x.date)}</td><td><span class="tg ${x.type == "Expense" ? "overdue" : "done"}">${t(x.type)}</span></td><td>${esc(bnm(x.cat))}</td><td>${esc(x.desc)}<div class="mu">${esc(x.notes)}</div></td><td><b>${x.type == "Income" ? "+" : "−"}${money(x.amt)}</b></td><td style="white-space:nowrap"><button class="btn s sm" data-te="${x.id}">${t("Edit")}</button> <button class="btn s sm" data-tx="${x.id}">${t("Delete")}</button></td></tr>`).join("") || '<tr><td colspan="6" class="mu">' + t("No transactions for these filters.") + "</td></tr>"}</tbody></table></div><p class="mu">${t("All figures come from the transactions you enter. Amounts are in SDG with no currency conversion. Resetting the monthly plan never deletes transactions.")}</p>`;
+  dpWire($("#m"));
+  $("#bm").onchange = () => {
+    BM = $("#bm").value || BM;
+    budget();
+  };
+  $("#bt").onclick = () => editTx();
+  $("#bp").onclick = () =>
+    modal(
+      t("Monthly budget for {0}", mlab(BM)),
+      [{ k: "b", l: t("Planned spending limit (SDG)"), t: "number", n: 1 }],
+      { b: m.plan || "" },
+      (o) => {
+        const v = +o.b;
+        if (!(v > 0)) return t("Enter an amount greater than 0.");
+        B.plan[BM] = v;
+        save();
+        budget();
+      },
+    );
+  $("#br").onclick = () =>
+    ask(
+      t(
+        "Reset the planned budget for {0} and all category limits? Your transactions are kept.",
+        mlab(BM),
+      ),
+      () => {
+        delete B.plan[BM];
+        B.cats.forEach((c) => (c.limit = 0));
+        save();
+        budget();
+        toast(t("Plan reset. Transactions kept."));
+      },
+      t("Reset"),
+    );
+  $("#bd").onclick = () =>
+    modal(
+      t("Add obligation"),
+      [
+        { k: "title", l: t("What is due?") },
+        { k: "date", l: t("Due date"), t: "date", req: 1 },
+        { k: "amt", l: t("Amount (SDG)"), t: "number", n: 1 },
+      ],
+      { date: TODAY },
+      (o) => {
+        if (!o.title || !o.date || !(+o.amt > 0))
+          return t("Enter a title, a date and an amount above 0.");
+        B.due.push({ id: uid(), title: o.title, date: o.date, amt: +o.amt });
+        save();
+        budget();
+      },
+    );
+  document.querySelectorAll("[data-dx]").forEach(
+    (e) =>
+      (e.onclick = () => {
+        B.due = B.due.filter((d) => d.id != e.dataset.dx);
+        save();
+        budget();
+      }),
+  );
+  const bf = (id) => () => {
+    BF.type = $("#bty").value;
+    BF.cat = $("#bcat").value;
+    BF.q = $("#bsq").value;
+    BF.all = $("#ball").checked;
+    rr(id, budget);
+  };
+  ["#bty", "#bcat", "#bsq", "#ball"].forEach((i) => ($(i).oninput = bf(i)));
+  document
+    .querySelectorAll("[data-ma]")
+    .forEach((e) => (e.onclick = () => mg(e.dataset.ma)));
+  document
+    .querySelectorAll("[data-me]")
+    .forEach((e) => (e.onclick = () => mg(...e.dataset.me.split("|"))));
+  document.querySelectorAll("[data-mx]").forEach(
+    (e) =>
+      (e.onclick = () => {
+        const [k, id] = e.dataset.mx.split("|"),
+          n = B.tx.filter((t) => t.cat == id).length;
+        if (n)
+          return toast(
+            t(
+              "It has {0} transactions. Rename it instead so your history stays intact.",
+              n,
+            ),
+          );
+        if (B[k].length < 2 && k != "sv") return toast(t("Keep at least one."));
+        ask(t("Delete “{0}”?", bnm(id)), () => {
+          B[k] = B[k].filter((c) => c.id != id);
+          save();
+          budget();
+        });
+      }),
+  );
+  document
+    .querySelectorAll("[data-te]")
+    .forEach((e) => (e.onclick = () => editTx(e.dataset.te)));
+  document.querySelectorAll("[data-tx]").forEach(
+    (e) =>
+      (e.onclick = () => {
+        const x = B.tx.find((t) => t.id == e.dataset.tx);
+        ask(
+          t(
+            "Delete this transaction ({0}) of {1} from {2}? Totals will update.",
+            t(x.type),
+            money(x.amt),
+            fmt(x.date),
+          ),
+          () => {
+            B.tx = B.tx.filter((t) => t.id != x.id);
+            save();
+            budget();
+          },
+        );
+      }),
+  );
+}
 /* ---- dashboard widgets ---- */
-function hw(){const H=S.hide,cb=(k,l)=>`<label style="margin-inline-end:14px"><input type="checkbox" data-hw="${k}" ${H[k]?'':'checked'}> ${l}</label>`;let o=`<details style="grid-column:1/-1"><summary class="mu" style="cursor:pointer">${t('Customize dashboard')}</summary><div style="padding:8px 0">${cb('goals',t('Priorities & goals'))}${cb('habits',t('Habits'))}${cb('budget',t('Budget'))}</div></details>`;
-if(!H.goals){const og=S.gl.filter(g=>g.status!='Completed').sort(gs),gl=og.filter(g=>PR[g.pri]<2||(g.target&&g.target<=addD(TODAY,14))).slice(0,4),ms=og.flatMap(g=>g.ms.filter(m=>!m.done).slice(0,1).map(m=>({m,g}))).sort((a,b)=>(a.g.target||'9').localeCompare(b.g.target||'9')).slice(0,3);
-o+=`<div class="c" data-go="goals"><h3>🎯 ${t('Priorities & goals')}</h3>`+(gl.map(g=>`<div class="row"><div><b>${esc(g.title)}</b><div class="mu">${t(g.pri)} · ${g.target?(g.target<TODAY?'<b style="color:var(--bad)">'+t('Overdue')+'</b> ':g.target<=addD(TODAY,7)?'<b style="color:var(--wn)">'+t('Approaching')+'</b> ':t('Target {0}',fmt(g.target))):t('No target date')}</div>${bar(gp(g))}</div></div>`).join('')||'<p class="mu">'+t('No high-priority goals right now.')+'</p>')+(ms.length?'<div class="mu" style="margin-top:8px">'+t('Next milestones:')+' '+ms.map(x=>esc(x.m.t)+' ('+esc(x.g.title)+')').join(' · ')+'</div>':'')+'</div>'}
-if(!H.habits){const td=S.hb.filter(h=>sched(h,TODAY)),dn=td.filter(h=>h.log[TODAY]).length;o+=`<div class="c" data-go="habits"><h3>🌱 ${t('Today’s habits')} <span class="mu">${dn}/${td.length}</span></h3>${bar(pct(dn,td.length))}`+td.map(h=>`<div class="row"><input type="checkbox" data-ht="${h.id}" ${h.log[TODAY]?'checked':''} aria-label="${esc(h.name)}"><div>${esc(h.name)} <span class="mu">🔥 ${hst(h).streak}${h.freq=='weekly'?' '+t('wk'):''}</span></div></div>`).join('')+(td.length?'':`<p class="mu">${S.hb.length?t('Nothing scheduled today.'):t('No habits yet. Add one in Habits.')}</p>`)+'</div>'}
-if(!H.budget){const m=bsum(TODAY.slice(0,7)),nd=S.bg.due.filter(d=>d.date>=TODAY).sort((a,b)=>a.date.localeCompare(b.date))[0];o+=`<div class="c" data-go="budget"><h3>💰 ${t('This month’s budget')}</h3><div class="mu">${t('Spent')} ${money(m.exp)}${m.plan?' '+t('of {0}',money(m.plan)):''}</div>${m.plan?bar(Math.min(100,pct(m.exp,m.plan))):''}<div class="row"><div>${t('Remaining budget')}</div><b>${m.plan?money(m.rem):t('Not set')}</b></div><div class="row"><div>${t('Saved this month')}</div><b>${money(m.sav)}</b></div>${nd?`<div class="mu">${t('Next obligation:')} ${esc(nd.title)} · ${fmt(nd.date)} · ${money(nd.amt)}</div>`:''}</div>`}
-return o}
-function hwire(){document.querySelectorAll('[data-hw]').forEach(e=>e.onchange=()=>{S.hide[e.dataset.hw]=!e.checked;save();home()});document.querySelectorAll('[data-ht]').forEach(e=>e.onchange=()=>{tog(e.dataset.ht,TODAY);home()});document.querySelectorAll('[data-go]').forEach(e=>e.onclick=ev=>{if(!ev.target.closest('input,button,a,label,summary'))show(e.dataset.go)})}
+function hw() {
+  const H = S.hide,
+    cb = (k, l) =>
+      `<label style="margin-inline-end:14px"><input type="checkbox" data-hw="${k}" ${H[k] ? "" : "checked"}> ${l}</label>`;
+  let o = `<details style="grid-column:1/-1"><summary class="mu" style="cursor:pointer">${t("Customize dashboard")}</summary><div style="padding:8px 0">${cb("goals", t("Priorities & goals"))}${cb("habits", t("Habits"))}${cb("budget", t("Budget"))}</div></details>`;
+  if (!H.goals) {
+    const og = S.gl.filter((g) => g.status != "Completed").sort(gs),
+      gl = og
+        .filter(
+          (g) => PR[g.pri] < 2 || (g.target && g.target <= addD(TODAY, 14)),
+        )
+        .slice(0, 4),
+      ms = og
+        .flatMap((g) =>
+          g.ms
+            .filter((m) => !m.done)
+            .slice(0, 1)
+            .map((m) => ({ m, g })),
+        )
+        .sort((a, b) => (a.g.target || "9").localeCompare(b.g.target || "9"))
+        .slice(0, 3);
+    o +=
+      `<div class="c" data-go="goals"><h3>🎯 ${t("Priorities & goals")}</h3>` +
+      (gl
+        .map(
+          (g) =>
+            `<div class="row"><div><b>${esc(g.title)}</b><div class="mu">${t(g.pri)} · ${g.target ? (g.target < TODAY ? '<b style="color:var(--bad)">' + t("Overdue") + "</b> " : g.target <= addD(TODAY, 7) ? '<b style="color:var(--wn)">' + t("Approaching") + "</b> " : t("Target {0}", fmt(g.target))) : t("No target date")}</div>${bar(gp(g))}</div></div>`,
+        )
+        .join("") ||
+        '<p class="mu">' + t("No high-priority goals right now.") + "</p>") +
+      (ms.length
+        ? '<div class="mu" style="margin-top:8px">' +
+          t("Next milestones:") +
+          " " +
+          ms.map((x) => esc(x.m.t) + " (" + esc(x.g.title) + ")").join(" · ") +
+          "</div>"
+        : "") +
+      "</div>";
+  }
+  if (!H.habits) {
+    const td = S.hb.filter((h) => sched(h, TODAY)),
+      dn = td.filter((h) => h.log[TODAY]).length;
+    o +=
+      `<div class="c" data-go="habits"><h3>🌱 ${t("Today’s habits")} <span class="mu">${dn}/${td.length}</span></h3>${bar(pct(dn, td.length))}` +
+      td
+        .map(
+          (h) =>
+            `<div class="row"><input type="checkbox" data-ht="${h.id}" ${h.log[TODAY] ? "checked" : ""} aria-label="${esc(h.name)}"><div>${esc(h.name)} <span class="mu">🔥 ${hst(h).streak}${h.freq == "weekly" ? " " + t("wk") : ""}</span></div></div>`,
+        )
+        .join("") +
+      (td.length
+        ? ""
+        : `<p class="mu">${S.hb.length ? t("Nothing scheduled today.") : t("No habits yet. Add one in Habits.")}</p>`) +
+      "</div>";
+  }
+  if (!H.budget) {
+    const m = bsum(TODAY.slice(0, 7)),
+      nd = S.bg.due
+        .filter((d) => d.date >= TODAY)
+        .sort((a, b) => a.date.localeCompare(b.date))[0];
+    o += `<div class="c" data-go="budget"><h3>💰 ${t("This month’s budget")}</h3><div class="mu">${t("Spent")} ${money(m.exp)}${m.plan ? " " + t("of {0}", money(m.plan)) : ""}</div>${m.plan ? bar(Math.min(100, pct(m.exp, m.plan))) : ""}<div class="row"><div>${t("Remaining budget")}</div><b>${m.plan ? money(m.rem) : t("Not set")}</b></div><div class="row"><div>${t("Saved this month")}</div><b>${money(m.sav)}</b></div>${nd ? `<div class="mu">${t("Next obligation:")} ${esc(nd.title)} · ${fmt(nd.date)} · ${money(nd.amt)}</div>` : ""}</div>`;
+  }
+  return o;
+}
+function hwire() {
+  document.querySelectorAll("[data-hw]").forEach(
+    (e) =>
+      (e.onchange = () => {
+        S.hide[e.dataset.hw] = !e.checked;
+        save();
+        home();
+      }),
+  );
+  document.querySelectorAll("[data-ht]").forEach(
+    (e) =>
+      (e.onchange = () => {
+        tog(e.dataset.ht, TODAY);
+        home();
+      }),
+  );
+  document.querySelectorAll("[data-go]").forEach(
+    (e) =>
+      (e.onclick = (ev) => {
+        if (!ev.target.closest("input,button,a,label,summary"))
+          show(e.dataset.go);
+      }),
+  );
+}
 
 /* ---- major picker (header chip; forced on first visit / for existing users with no major yet) ---- */
-function updMj(){const b=$('#mj');if(!b)return;const l=t('Major')+(S.major?': '+S.major:'');$('#mjt').textContent=S.major||t('Major');b.setAttribute('aria-label',l);b.title=l}
-function pickMajor(force){const d=$('#dg'),MI={CS:'<path d="M8 8l-4 4 4 4M16 8l4 4-4 4M13.5 5l-3 14"/>',IT:'<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4M7 9h4M7 12h7"/>'},MD={CS:'Programming, algorithms and numerical computing',IT:'Information systems, networks and management'};
-d.innerHTML=`<h3>${t('Choose your major')}</h3><div class="hint">${t('Your major decides which major-specific course appears in your deadlines and courses. Your other data is never deleted.')}</div><div class="mjg" role="radiogroup" aria-label="${t('Major')}">${['CS','IT'].map(k=>`<label class="mjo"><input type="radio" name="mj" value="${k}" ${k==S.major?'checked':''}><span class="mjc"><span class="mji" aria-hidden="true"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${MI[k]}</svg></span><span class="mjt"><b>${t(MJL[k])}</b><small>${t(MD[k])}</small></span><span class="mjk" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></span></label>`).join('')}</div><p class="mu er" id="er" role="alert"></p><div class="acts">${force?'':`<button class="btn s" id="cx" type="button">${t('Cancel')}</button>`}<button class="btn" id="sv" autofocus type="button">${t('Save')}</button></div>`;
-if(!force)$('#cx').onclick=()=>d.close();
-d.oncancel=e=>{if(force)e.preventDefault()};
-$('#sv').onclick=()=>{const c=d.querySelector('input[name=mj]:checked'),v=c?c.value:'';if(v!='CS'&&v!='IT'){$('#er').textContent=t('Please choose a major.');return}const ch=v!=S.major;S.major=v;if(F.sub&&!SUBS().includes(F.sub))F.sub='';save();d.oncancel=null;d.close();updMj();show(P);bell();if(ch)toast(t('Saved.'))};d.showModal()}
+function updMj() {
+  const b = $("#mj");
+  if (!b) return;
+  const l = t("Major") + (S.major ? ": " + S.major : "");
+  $("#mjt").textContent = S.major || t("Major");
+  b.setAttribute("aria-label", l);
+  b.title = l;
+}
+function pickMajor(force) {
+  const d = $("#dg"),
+    MI = {
+      CS: '<path d="M8 8l-4 4 4 4M16 8l4 4-4 4M13.5 5l-3 14"/>',
+      IT: '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4M7 9h4M7 12h7"/>',
+    },
+    MD = {
+      CS: "Programming, algorithms and numerical computing",
+      IT: "Information systems, networks and management",
+    };
+  d.innerHTML = `<h3>${t("Choose your major")}</h3><div class="hint">${t("Your major decides which major-specific course appears in your deadlines and courses. Your other data is never deleted.")}</div><div class="mjg" role="radiogroup" aria-label="${t("Major")}">${["CS", "IT"].map((k) => `<label class="mjo"><input type="radio" name="mj" value="${k}" ${k == S.major ? "checked" : ""}><span class="mjc"><span class="mji" aria-hidden="true"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${MI[k]}</svg></span><span class="mjt"><b>${t(MJL[k])}</b><small>${t(MD[k])}</small></span><span class="mjk" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></span></label>`).join("")}</div><p class="mu er" id="er" role="alert"></p><div class="acts">${force ? "" : `<button class="btn s" id="cx" type="button">${t("Cancel")}</button>`}<button class="btn" id="sv" autofocus type="button">${t("Save")}</button></div>`;
+  if (!force) $("#cx").onclick = () => d.close();
+  d.oncancel = (e) => {
+    if (force) e.preventDefault();
+  };
+  $("#sv").onclick = () => {
+    const c = d.querySelector("input[name=mj]:checked"),
+      v = c ? c.value : "";
+    if (v != "CS" && v != "IT") {
+      $("#er").textContent = t("Please choose a major.");
+      return;
+    }
+    const ch = v != S.major;
+    S.major = v;
+    if (F.sub && !SUBS().includes(F.sub)) F.sub = "";
+    save();
+    d.oncancel = null;
+    d.close();
+    updMj();
+    show(P);
+    bell();
+    if (ch) toast(t("Saved."));
+  };
+  d.showModal();
+}
 /* ---- search + notifications ---- */
-$('#q').oninput=()=>{const q=$('#q').value.trim().toLowerCase(),d=$('#drop');if(!q){d.hidden=true;return}const a=V().filter(x=>(x.title+x.subject).toLowerCase().includes(q)).slice(0,6),b=S.bk.filter(x=>(x.name+x.author).toLowerCase().includes(q)).slice(0,4);d.innerHTML=a.map(x=>`<button class="it" data-r="d" data-v="${esc(x.title)}"><b>${esc(x.title)}</b><div class="mu">${t('Deadline')} · ${fmt(x.date)}</div></button>`).join('')+b.map(x=>`<button class="it" data-r="b" data-v="${esc(x.name)}"><b>${esc(x.name)}</b><div class="mu">${t('Book')} · ${esc(x.author)}</div></button>`).join('')||'<div class="it mu">'+t('No results')+'</div>';d.hidden=false;d.querySelectorAll('[data-r]').forEach(e=>e.onclick=()=>{if(e.dataset.r=='d'){F={q:e.dataset.v,sub:'',type:'',stat:'',sort:'date'};show('deadlines')}else{B={q:e.dataset.v,stat:''};show('books')}d.hidden=true;$('#q').value=''})};
-const alerts=()=>[...V().filter(x=>!x.done&&x.date<=addD(TODAY,S.days)).sort((a,b)=>a.date.localeCompare(b.date)).map(x=>({k:x.id+(x.date<TODAY?'o':'s'),t:x.title,m:x.date<TODAY?t('Overdue since {0}',fmt(x.date)):t('Due {0}',fmt(x.date))})),...S.hb.filter(h=>h.remind&&h.freq!='weekly'&&sched(h,TODAY)&&!h.log[TODAY]&&nowHM()>=h.remind).map(h=>({k:h.id+TODAY,t:t('Habit: {0}',h.name),m:t('Scheduled today · reminder {0}',h.remind)}))];
-function bell(){const a=alerts(),n=a.filter(y=>!S.seen.includes(y.k)).length;$('#bc').textContent=n||'';$('#bc').style.display=n?'':'none'}
-$('#bb').onclick=()=>{const p=$('#np');if(!p.hidden){p.hidden=true;return}const a=alerts();p.innerHTML=`<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px"><b style="flex:1">${t('Reminders')}</b><select id="pd" style="width:auto" aria-label="${t('Remind me before')}"><option value="1">${t('1 day')}</option><option value="3">${t('3 days')}</option><option value="7">${t('7 days')}</option></select><button class="btn s sm" id="mr">${t('Mark read')}</button></div>`+(a.map(({k,t,m})=>`<div class="row"><div><b>${esc(t)}</b>${S.seen.includes(k)?'':' 🔵'}<div class="mu">${esc(m)}</div></div></div>`).join('')||'<p class="mu">'+t('You’re all caught up.')+'</p>')+'<p class="mu">'+t('In-app reminders only. Email or push reminders need a server.')+'</p>';$('#pd').value=S.days;$('#pd').onchange=()=>{S.days=+$('#pd').value;save();bell();$('#bb').click();$('#bb').click()};$('#mr').onclick=()=>{S.seen=[...new Set([...S.seen,...a.map(y=>y.k)])];save();bell();$('#np').hidden=true};p.hidden=false};
-document.addEventListener('click',e=>{if(!e.target.closest('.sr'))$('#drop').hidden=true;if(!e.target.closest('.bell'))$('#np').hidden=true});
-new MutationObserver(()=>document.querySelectorAll('table').forEach(t=>{const h=[...t.querySelectorAll('thead th')].map(x=>x.textContent);t.querySelectorAll('tbody tr').forEach(r=>[...r.children].forEach((c,i)=>{if(h[i]&&!c.dataset.l&&c.colSpan<2)c.dataset.l=h[i]}))})).observe($('#m'),{childList:true,subtree:true});$('#ttl').onclick=()=>show('home');$('#mm').onclick=()=>$('#nl').classList.toggle('open');navWire();
+$("#q").oninput = () => {
+  const q = $("#q").value.trim().toLowerCase(),
+    d = $("#drop");
+  if (!q) {
+    d.hidden = true;
+    return;
+  }
+  const a = V()
+      .filter((x) => (x.title + x.subject).toLowerCase().includes(q))
+      .slice(0, 6),
+    b = S.bk
+      .filter((x) => (x.name + x.author).toLowerCase().includes(q))
+      .slice(0, 4);
+  d.innerHTML =
+    a
+      .map(
+        (x) =>
+          `<button class="it" data-r="d" data-v="${esc(x.title)}"><b>${esc(x.title)}</b><div class="mu">${t("Deadline")} · ${fmt(x.date)}</div></button>`,
+      )
+      .join("") +
+      b
+        .map(
+          (x) =>
+            `<button class="it" data-r="b" data-v="${esc(x.name)}"><b>${esc(x.name)}</b><div class="mu">${t("Book")} · ${esc(x.author)}</div></button>`,
+        )
+        .join("") || '<div class="it mu">' + t("No results") + "</div>";
+  d.hidden = false;
+  d.querySelectorAll("[data-r]").forEach(
+    (e) =>
+      (e.onclick = () => {
+        if (e.dataset.r == "d") {
+          F = { q: e.dataset.v, sub: "", type: "", stat: "", sort: "date" };
+          show("deadlines");
+        } else {
+          B = { q: e.dataset.v, stat: "" };
+          show("books");
+        }
+        d.hidden = true;
+        $("#q").value = "";
+      }),
+  );
+};
+const alerts = () => [
+  ...V()
+    .filter((x) => !x.done && x.date <= addD(TODAY, S.days))
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map((x) => ({
+      k: x.id + (x.date < TODAY ? "o" : "s"),
+      t: x.title,
+      m:
+        x.date < TODAY
+          ? t("Overdue since {0}", fmt(x.date))
+          : t("Due {0}", fmt(x.date)),
+    })),
+  ...S.hb
+    .filter(
+      (h) =>
+        h.remind &&
+        h.freq != "weekly" &&
+        sched(h, TODAY) &&
+        !h.log[TODAY] &&
+        nowHM() >= h.remind,
+    )
+    .map((h) => ({
+      k: h.id + TODAY,
+      t: t("Habit: {0}", h.name),
+      m: t("Scheduled today · reminder {0}", h.remind),
+    })),
+];
+function bell() {
+  const a = alerts(),
+    n = a.filter((y) => !S.seen.includes(y.k)).length;
+  $("#bc").textContent = n || "";
+  $("#bc").style.display = n ? "" : "none";
+}
+$("#bb").onclick = () => {
+  const p = $("#np");
+  if (!p.hidden) {
+    p.hidden = true;
+    return;
+  }
+  const a = alerts();
+  p.innerHTML =
+    `<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px"><b style="flex:1">${t("Reminders")}</b><select id="pd" style="width:auto" aria-label="${t("Remind me before")}"><option value="1">${t("1 day")}</option><option value="3">${t("3 days")}</option><option value="7">${t("7 days")}</option></select><button class="btn s sm" id="mr">${t("Mark read")}</button></div>` +
+    (a
+      .map(
+        ({ k, t, m }) =>
+          `<div class="row"><div><b>${esc(t)}</b>${S.seen.includes(k) ? "" : " 🔵"}<div class="mu">${esc(m)}</div></div></div>`,
+      )
+      .join("") || '<p class="mu">' + t("You’re all caught up.") + "</p>") +
+    '<p class="mu">' +
+    t("In-app reminders only. Email or push reminders need a server.") +
+    "</p>";
+  $("#pd").value = S.days;
+  $("#pd").onchange = () => {
+    S.days = +$("#pd").value;
+    save();
+    bell();
+    $("#bb").click();
+    $("#bb").click();
+  };
+  $("#mr").onclick = () => {
+    S.seen = [...new Set([...S.seen, ...a.map((y) => y.k)])];
+    save();
+    bell();
+    $("#np").hidden = true;
+  };
+  p.hidden = false;
+};
+document.addEventListener("click", (e) => {
+  if (!e.target.closest(".sr")) $("#drop").hidden = true;
+  if (!e.target.closest(".bell")) $("#np").hidden = true;
+});
+let tblQ = 0;
+new MutationObserver(() => {
+  if (tblQ) return;
+  tblQ = requestAnimationFrame(() => {
+    tblQ = 0;
+    document.querySelectorAll("table").forEach((t) => {
+      const h = [...t.querySelectorAll("thead th")].map((x) => x.textContent);
+      t.querySelectorAll("tbody tr").forEach((r) =>
+        [...r.children].forEach((c, i) => {
+          if (h[i] && !c.dataset.l && c.colSpan < 2) c.dataset.l = h[i];
+        }),
+      );
+    });
+  });
+}).observe($("#m"), { childList: true, subtree: true });
+$("#ttl").onclick = () => show("home");
+/* ---- mobile menu: open/close, scrollable height, close on select / outside tap / Escape ---- */
+const navMQ = matchMedia("(max-width: 767px)");
+function navFit() {
+  const l = $("#nl");
+  if (!l.classList.contains("open")) return;
+  l.style.maxHeight =
+    Math.max(160, innerHeight - l.getBoundingClientRect().top - 12) + "px";
+}
+function navSet(o) {
+  const l = $("#nl"),
+    b = $("#mm");
+  o = !!o && navMQ.matches;
+  l.classList.toggle("open", o);
+  b.setAttribute("aria-expanded", o);
+  b.textContent = o ? "✕" : "☰";
+  if (o) navFit();
+  else l.style.maxHeight = "";
+}
+$("#mm").setAttribute("aria-controls", "nl");
+$("#mm").setAttribute("aria-expanded", "false");
+$("#mm").onclick = () => navSet(!$("#nl").classList.contains("open"));
+$("#nl").addEventListener("click", (e) => {
+  if (e.target.closest(".nb")) navSet(false);
+});
+document.addEventListener(
+  "pointerdown",
+  (e) => {
+    if ($("#nl").classList.contains("open") && !e.target.closest("#nl,#mm"))
+      navSet(false);
+  },
+  { passive: true },
+);
+document.addEventListener("keydown", (e) => {
+  if (e.key == "Escape" && $("#nl").classList.contains("open")) {
+    navSet(false);
+    $("#mm").focus();
+  }
+});
+navMQ.addEventListener("change", () => navSet(false));
+addEventListener("resize", navFit, { passive: true });
+navWire();
 /* ---- Course Library + Assignments (data: UNIHUB_LIB / UNIHUB_ASG; only adds S.asgDone, nothing existing is touched) ---- */
-const LIBD=window.UNIHUB_LIB||{courses:[]},ASGD=window.UNIHUB_ASG||[],TZ='Africa/Khartoum';
-S.asgDone=S.asgDone||{};
-let libS={q:'',c:'',ty:'',open:{}},asgS={q:'',c:'',st:'',sort:'asc'},asgFocus='',libFocus='';
-const ip=p=>`<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
-const RT={file:['File','#2563eb','<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>'],
-ppt:['PowerPoint','#ea580c','<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M12 16v4M8 20h8M7 12l3-3 3 2 4-4"/>'],
-video:['Video','#db2777','<circle cx="12" cy="12" r="9"/><path d="M10 8.5l5.5 3.5-5.5 3.5z"/>'],
-online:['Online lecture','#7c3aed','<rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4M10.5 8.5l4 2.5-4 2.5z"/>'],
-record:['Recording','#c026d3','<rect x="2.5" y="6" width="13" height="12" rx="2.5"/><path d="M15.5 10.5l6-3.5v10l-6-3.5z"/>'],
-url:['URL','#0891b2','<path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/>'],
-attendance:['Attendance','#16a34a','<circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/>'],
-zoom:['Zoom meeting','#0ea5e9','<rect x="2.5" y="6.5" width="12.5" height="11" rx="2.5"/><path d="M15 10.5l6-3.5v10l-6-3.5z"/><circle cx="8.7" cy="10.5" r="1.3"/><path d="M6 15c.6-1.4 1.6-2 2.7-2s2.1.6 2.7 2"/>'],
-assignment:['Assignment','#d97706','<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4h6v3H9zM9 12h6M9 16h4"/>'],
-other:['Resource','#64748b','<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/>']};
-const okU=u=>{u=String(u||'').trim();return u&&!/^\s*(javascript|data|vbscript):/i.test(u)?u:''};
-const vCourses=()=>LIBD.courses.filter(c=>c.g=='common'||c.g==S.major),cName=id=>{const c=LIBD.courses.find(x=>x.id==id);return c?t(c.name):id};
+const LIBD = window.UNIHUB_LIB || { courses: [] },
+  ASGD = window.UNIHUB_ASG || [],
+  TZ = "Africa/Khartoum";
+S.asgDone = S.asgDone || {};
+let libS = { q: "", c: "", ty: "", open: {} },
+  asgS = { q: "", c: "", st: "", sort: "asc" },
+  asgFocus = "",
+  libFocus = "";
+const ip = (p) =>
+  `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
+const RT = {
+  file: [
+    "File",
+    "#2563eb",
+    '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>',
+  ],
+  ppt: [
+    "PowerPoint",
+    "#ea580c",
+    '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M12 16v4M8 20h8M7 12l3-3 3 2 4-4"/>',
+  ],
+  video: [
+    "Video",
+    "#db2777",
+    '<circle cx="12" cy="12" r="9"/><path d="M10 8.5l5.5 3.5-5.5 3.5z"/>',
+  ],
+  online: [
+    "Online lecture",
+    "#7c3aed",
+    '<rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4M10.5 8.5l4 2.5-4 2.5z"/>',
+  ],
+  record: [
+    "Recording",
+    "#c026d3",
+    '<rect x="2.5" y="6" width="13" height="12" rx="2.5"/><path d="M15.5 10.5l6-3.5v10l-6-3.5z"/>',
+  ],
+  url: [
+    "URL",
+    "#0891b2",
+    '<path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/>',
+  ],
+  attendance: [
+    "Attendance",
+    "#16a34a",
+    '<circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/>',
+  ],
+  zoom: [
+    "Zoom meeting",
+    "#0ea5e9",
+    '<rect x="2.5" y="6.5" width="12.5" height="11" rx="2.5"/><path d="M15 10.5l6-3.5v10l-6-3.5z"/><circle cx="8.7" cy="10.5" r="1.3"/><path d="M6 15c.6-1.4 1.6-2 2.7-2s2.1.6 2.7 2"/>',
+  ],
+  assignment: [
+    "Assignment",
+    "#d97706",
+    '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4h6v3H9zM9 12h6M9 16h4"/>',
+  ],
+  other: [
+    "Resource",
+    "#64748b",
+    '<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/>',
+  ],
+};
+const okU = (u) => {
+  u = String(u || "").trim();
+  return u && !/^\s*(javascript|data|vbscript):/i.test(u) ? u : "";
+};
+const vCourses = () =>
+    LIBD.courses.filter((c) => c.g == "common" || c.g == S.major),
+  cName = (id) => {
+    const c = LIBD.courses.find((x) => x.id == id);
+    return c ? t(c.name) : id;
+  };
 /* assignment status uses real instants (fixed +02:00 = Africa/Khartoum), so it is correct on any device timezone */
-const ASL={upcoming:'Upcoming',open:'Open',soon:'Due soon',overdue:'Overdue',done:'Completed'};
-const asgSt=a=>{const n=Date.now(),o=Date.parse(a.opens),d=Date.parse(a.due);return S.asgDone[a.id]?'done':n>d?'overdue':n<o?'upcoming':d-n<=1728e5?'soon':'open'};
-const dur=ms=>{const m=Math.floor(Math.max(0,ms)/6e4),d=Math.floor(m/1440),h=Math.floor(m%1440/60),mi=m%60;return d?t('{0}d {1}h',d,h):h?t('{0}h {1}m',h,mi):t('{0}m',mi)};
-const dfo=ms=>new Date(ms).toLocaleDateString(LOC(),{timeZone:TZ,weekday:'long',day:'numeric',month:'long',year:'numeric'}),tmf=ms=>new Date(ms).toLocaleTimeString(LOC(),{timeZone:TZ,hour:'numeric',minute:'2-digit',hour12:true});
-const cdTxt=a=>{const s=asgSt(a),n=Date.now();return s=='done'?'':s=='upcoming'?t('Opens in {0}',dur(Date.parse(a.opens)-n)):s=='overdue'?t('Overdue by {0}',dur(n-Date.parse(a.due))):t('Due in {0}',dur(Date.parse(a.due)-n))};
-const vAsg=()=>ASGD.filter(a=>vCourses().some(c=>c.id==a.course));
-function asgCard(a){const s=asgSt(a),o=Date.parse(a.opens),d=Date.parse(a.due),cd=cdTxt(a),u=okU(a.submitUrl);
-return`<article class="c asg ${s}" id="asg-${esc(a.id)}" data-aid="${esc(a.id)}" tabindex="-1" aria-labelledby="at-${esc(a.id)}"><div class="ah"><div><div class="mu">${esc(cName(a.course))}</div><h3 id="at-${esc(a.id)}" dir="auto">${esc(a.title)}</h3></div><span class="tg ${s}">${t(ASL[s])}</span></div>
-<dl class="ad"><div><dt>${t('Opening date')}</dt><dd>${dfo(o)}${a.opensTime?' · '+tmf(o):''}</dd></div><div><dt>${t('Due date')}</dt><dd>${dfo(d)}</dd></div><div><dt>${t('Due time')}</dt><dd>${tmf(d)}</dd></div></dl>
-<p class="cd" ${cd?'':'hidden'}>${cd}</p><div class="aa"><button class="btn s sm" type="button" data-ad="${esc(a.id)}" aria-pressed="${s=='done'}">${t(s=='done'?'Mark as not completed':'Mark as completed')}</button>${u?`<a class="btn sm" href="${esc(u)}" target="_blank" rel="noopener noreferrer">${t('Submit assignment')}</a>`:''}<button class="btn s sm" type="button" data-gl="${esc(a.course)}">${t('Open in Course Library')}</button></div></article>`}
-function asgDraw(){const all=vAsg(),stt=all.map(asgSt),q=asgS.q.trim().toLowerCase(),
-l=all.filter(a=>(!asgS.c||a.course==asgS.c)&&(!asgS.st||asgSt(a)==asgS.st)&&(!q||(a.title+' '+cName(a.course)+' '+LIBD.courses.find(c=>c.id==a.course).name).toLowerCase().includes(q))).sort((a,b)=>(Date.parse(a.due)-Date.parse(b.due))*(asgS.sort=='asc'?1:-1)),
-pe=stt.filter(x=>x=='upcoming'||x=='open'||x=='soon').length;
-$('#aov').innerHTML=[[all.length,'Total',''],[pe,'Pending',''],[stt.filter(x=>x=='done').length,'Completed','color:var(--ok)'],[stt.filter(x=>x=='overdue').length,'Overdue','color:var(--bad)']].map(([n,k,s])=>`<div class="c"><div class="big" style="${s}">${n}</div><div class="mu">${t(k)}</div></div>`).join('');
-$('#acnt').textContent=t('{0} of {1} shown',l.length,all.length);
-$('#ag').innerHTML=l.map(asgCard).join('')||`<p class="mu">${t('No assignments match these filters.')}</p>`;
-if(asgFocus){const e=$('#asg-'+asgFocus);asgFocus='';if(e){e.scrollIntoView({block:'center'});e.classList.add('flash');e.focus({preventScroll:true})}}}
-function assignments(){const cs=vCourses().filter(c=>ASGD.some(a=>a.course==c.id));
-$('#m').innerHTML=`${cv('assignments',t('Assignments'),t('Your assignments, opening dates, deadlines and live countdowns.'))}<div class="g g4 ov" id="aov"></div><div class="tb"><input id="aq" type="search" placeholder="${t('Search assignments…')}" aria-label="${t('Search assignments…')}" value="${esc(asgS.q)}"><select id="ac" aria-label="${t('Course')}"><option value="">${t('All courses')}</option>${cs.map(c=>`<option value="${c.id}" ${c.id==asgS.c?'selected':''}>${esc(t(c.name))}</option>`).join('')}</select><select id="as" aria-label="${t('Status')}"><option value="">${t('All statuses')}</option>${Object.entries(ASL).map(([k,v])=>`<option value="${k}" ${k==asgS.st?'selected':''}>${t(v)}</option>`).join('')}</select><select id="ao" aria-label="${t('Sort')}"><option value="asc" ${asgS.sort=='asc'?'selected':''}>${t('Sort: due date (soonest)')}</option><option value="desc" ${asgS.sort=='desc'?'selected':''}>${t('Sort: due date (latest)')}</option></select></div><p class="mu" id="acnt" aria-live="polite"></p><div class="ag" id="ag"></div>`;
-$('#aq').oninput=e=>{asgS.q=e.target.value;asgDraw()};$('#ac').onchange=e=>{asgS.c=e.target.value;asgDraw()};$('#as').onchange=e=>{asgS.st=e.target.value;asgDraw()};$('#ao').onchange=e=>{asgS.sort=e.target.value;asgDraw()};
-$('#ag').onclick=e=>{const b=e.target.closest('[data-ad]'),g=e.target.closest('[data-gl]');if(b){S.asgDone[b.dataset.ad]=!S.asgDone[b.dataset.ad];save();const id=b.dataset.ad;asgDraw();const n=$('#asg-'+id+' [data-ad]');if(n)n.focus()}else if(g)goLib(g.dataset.gl)};asgDraw()}
-function goAsg(id){asgS={q:'',c:'',st:'',sort:'asc'};asgFocus=id;show('assignments')}
-function goLib(id){libS={q:'',c:'',ty:'',open:{[id]:true}};libFocus=id;show('library')}
-setInterval(()=>{if(P!='assignments'||document.hidden)return;document.querySelectorAll('#ag [data-aid]').forEach(e=>{const a=ASGD.find(x=>x.id==e.dataset.aid);if(!a)return;if(!e.classList.contains(asgSt(a)))return asgDraw();const c=e.querySelector('.cd'),x=cdTxt(a);if(c&&c.textContent!=x)c.textContent=x})},30000);
+const ASL = {
+  upcoming: "Upcoming",
+  open: "Open",
+  soon: "Due soon",
+  overdue: "Overdue",
+  done: "Completed",
+};
+const asgSt = (a) => {
+  const n = Date.now(),
+    o = Date.parse(a.opens),
+    d = Date.parse(a.due);
+  return S.asgDone[a.id]
+    ? "done"
+    : n > d
+      ? "overdue"
+      : n < o
+        ? "upcoming"
+        : d - n <= 1728e5
+          ? "soon"
+          : "open";
+};
+const dur = (ms) => {
+  const m = Math.floor(Math.max(0, ms) / 6e4),
+    d = Math.floor(m / 1440),
+    h = Math.floor((m % 1440) / 60),
+    mi = m % 60;
+  return d ? t("{0}d {1}h", d, h) : h ? t("{0}h {1}m", h, mi) : t("{0}m", mi);
+};
+const dfo = (ms) =>
+    new Date(ms).toLocaleDateString(LOC(), {
+      timeZone: TZ,
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }),
+  tmf = (ms) =>
+    new Date(ms).toLocaleTimeString(LOC(), {
+      timeZone: TZ,
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+const cdTxt = (a) => {
+  const s = asgSt(a),
+    n = Date.now();
+  return s == "done"
+    ? ""
+    : s == "upcoming"
+      ? t("Opens in {0}", dur(Date.parse(a.opens) - n))
+      : s == "overdue"
+        ? t("Overdue by {0}", dur(n - Date.parse(a.due)))
+        : t("Due in {0}", dur(Date.parse(a.due) - n));
+};
+const vAsg = () => ASGD.filter((a) => vCourses().some((c) => c.id == a.course));
+function asgCard(a) {
+  const s = asgSt(a),
+    o = Date.parse(a.opens),
+    d = Date.parse(a.due),
+    cd = cdTxt(a),
+    u = okU(a.submitUrl);
+  return `<article class="c asg ${s}" id="asg-${esc(a.id)}" data-aid="${esc(a.id)}" tabindex="-1" aria-labelledby="at-${esc(a.id)}"><div class="ah"><div><div class="mu">${esc(cName(a.course))}</div><h3 id="at-${esc(a.id)}" dir="auto">${esc(t(a.title))}</h3></div><span class="tg ${s}">${t(ASL[s])}</span></div>
+<dl class="ad"><div><dt>${t("Opening date")}</dt><dd>${dfo(o)}${a.opensTime ? " · " + tmf(o) : ""}</dd></div><div><dt>${t("Due date")}</dt><dd>${dfo(d)}</dd></div><div><dt>${t("Due time")}</dt><dd>${tmf(d)}</dd></div></dl>
+${a.instr ? `<div class="ai"><b>${t("Instructions")}</b><p dir="auto">${esc(t(a.instr))}</p></div>` : ""}<p class="cd" ${cd ? "" : "hidden"}>${cd}</p><div class="aa"><button class="btn s sm" type="button" data-ad="${esc(a.id)}" aria-pressed="${s == "done"}">${t(s == "done" ? "Mark as not completed" : "Mark as completed")}</button>${u ? `<a class="btn sm" href="${esc(u)}" target="_blank" rel="noopener noreferrer">${t("Submit assignment")}</a>` : ""}<button class="btn s sm" type="button" data-gl="${esc(a.course)}">${t("Open in Course Library")}</button></div></article>`;
+}
+function asgDraw() {
+  const all = vAsg(),
+    stt = all.map(asgSt),
+    q = asgS.q.trim().toLowerCase(),
+    l = all
+      .filter(
+        (a) =>
+          (!asgS.c || a.course == asgS.c) &&
+          (!asgS.st || asgSt(a) == asgS.st) &&
+          (!q ||
+            (
+              a.title +
+              " " +
+              t(a.title) +
+              " " +
+              cName(a.course) +
+              " " +
+              LIBD.courses.find((c) => c.id == a.course).name
+            )
+              .toLowerCase()
+              .includes(q)),
+      )
+      .sort(
+        (a, b) =>
+          (Date.parse(a.due) - Date.parse(b.due)) *
+          (asgS.sort == "asc" ? 1 : -1),
+      ),
+    pe = stt.filter(
+      (x) => x == "upcoming" || x == "open" || x == "soon",
+    ).length;
+  $("#aov").innerHTML = [
+    [all.length, "Total", ""],
+    [pe, "Pending", ""],
+    [stt.filter((x) => x == "done").length, "Completed", "color:var(--ok)"],
+    [stt.filter((x) => x == "overdue").length, "Overdue", "color:var(--bad)"],
+  ]
+    .map(
+      ([n, k, s]) =>
+        `<div class="c"><div class="big" style="${s}">${n}</div><div class="mu">${t(k)}</div></div>`,
+    )
+    .join("");
+  $("#acnt").textContent = t("{0} of {1} shown", l.length, all.length);
+  $("#ag").innerHTML =
+    l.map(asgCard).join("") ||
+    `<p class="mu">${t("No assignments match these filters.")}</p>`;
+  if (asgFocus) {
+    const e = $("#asg-" + asgFocus);
+    asgFocus = "";
+    if (e) {
+      e.scrollIntoView({ block: "center" });
+      e.classList.add("flash");
+      e.focus({ preventScroll: true });
+    }
+  }
+}
+function assignments() {
+  const cs = vCourses().filter((c) => ASGD.some((a) => a.course == c.id));
+  $("#m").innerHTML =
+    `${cv("assignments", t("Assignments"), t("Your assignments, opening dates, deadlines and live countdowns."))}<div class="g g4 ov" id="aov"></div><div class="tb"><input id="aq" type="search" placeholder="${t("Search assignments…")}" aria-label="${t("Search assignments…")}" value="${esc(asgS.q)}"><select id="ac" aria-label="${t("Course")}"><option value="">${t("All courses")}</option>${cs.map((c) => `<option value="${c.id}" ${c.id == asgS.c ? "selected" : ""}>${esc(t(c.name))}</option>`).join("")}</select><select id="as" aria-label="${t("Status")}"><option value="">${t("All statuses")}</option>${Object.entries(
+      ASL,
+    )
+      .map(
+        ([k, v]) =>
+          `<option value="${k}" ${k == asgS.st ? "selected" : ""}>${t(v)}</option>`,
+      )
+      .join(
+        "",
+      )}</select><select id="ao" aria-label="${t("Sort")}"><option value="asc" ${asgS.sort == "asc" ? "selected" : ""}>${t("Sort: due date (soonest)")}</option><option value="desc" ${asgS.sort == "desc" ? "selected" : ""}>${t("Sort: due date (latest)")}</option></select></div><p class="mu" id="acnt" aria-live="polite"></p><div class="ag" id="ag"></div>`;
+  $("#aq").oninput = (e) => {
+    asgS.q = e.target.value;
+    asgDraw();
+  };
+  $("#ac").onchange = (e) => {
+    asgS.c = e.target.value;
+    asgDraw();
+  };
+  $("#as").onchange = (e) => {
+    asgS.st = e.target.value;
+    asgDraw();
+  };
+  $("#ao").onchange = (e) => {
+    asgS.sort = e.target.value;
+    asgDraw();
+  };
+  $("#ag").onclick = (e) => {
+    const b = e.target.closest("[data-ad]"),
+      g = e.target.closest("[data-gl]");
+    if (b) {
+      S.asgDone[b.dataset.ad] = !S.asgDone[b.dataset.ad];
+      save();
+      const id = b.dataset.ad;
+      asgDraw();
+      const n = $("#asg-" + id + " [data-ad]");
+      if (n) n.focus();
+    } else if (g) goLib(g.dataset.gl);
+  };
+  asgDraw();
+}
+function goAsg(id) {
+  asgS = { q: "", c: "", st: "", sort: "asc" };
+  asgFocus = id;
+  show("assignments");
+}
+function goLib(id) {
+  libS = { q: "", c: "", ty: "", open: { [id]: true } };
+  libFocus = id;
+  show("library");
+}
+setInterval(() => {
+  if (P != "assignments" || document.hidden) return;
+  document.querySelectorAll("#ag [data-aid]").forEach((e) => {
+    const a = ASGD.find((x) => x.id == e.dataset.aid);
+    if (!a) return;
+    if (!e.classList.contains(asgSt(a))) return asgDraw();
+    const c = e.querySelector(".cd"),
+      x = cdTxt(a);
+    if (c && c.textContent != x) c.textContent = x;
+  });
+}, 30000);
 /* library */
-const rMatch=(it,q)=>!q||[it.title,it.note,it.desc,t(it.note||''),t((RT[it.type]||RT.other)[0])].join(' ').toLowerCase().includes(q);
-function resItem(it){const[lb,cl]=RT[it.type]||RT.other,a=it.asg&&ASGD.find(x=>x.id==it.asg),u=okU(it.url),s=a&&asgSt(a);
-return`<li class="rs" style="--tc:${cl}"><span class="ri" aria-hidden="true">${ip((RT[it.type]||RT.other)[2])}</span><div class="rb"><b class="rt" dir="auto">${esc(it.title)}</b><div class="rm"><span class="tg ty">${t(lb)}</span>${it.count?`<span class="tg cn">${t('{0} Videos',it.count)}</span>`:''}${a?`<span class="tg ${s}">${t(ASL[s])}</span>`:''}</div>${it.desc?`<p class="rd">${esc(t(it.desc))}</p>`:''}${it.note?`<p class="rd">${esc(t(it.note))}</p>`:''}${it.ended?`<p class="rd">${t('Meeting ended: {0}',new Date(it.ended).toLocaleString(LOC(),{timeZone:TZ,weekday:'long',day:'numeric',month:'long',year:'numeric',hour:'numeric',minute:'2-digit',hour12:true}))}</p>`:''}${a?`<p class="rd">${t('Opening date')}: ${dfo(Date.parse(a.opens))} · ${t('Due date')}: ${dfo(Date.parse(a.due))}, ${tmf(Date.parse(a.due))}</p>`:''}</div><div class="ra">${u?`<a class="btn s sm" href="${esc(u)}" target="_blank" rel="noopener noreferrer">${t('Open link')}</a>`:a?'':`<span class="na">${t('No link yet')}</span>`}${a?`<button class="btn s sm" type="button" data-ga="${esc(a.id)}">${t('View in Assignments')}</button>`:''}</div></li>`}
-function crsCard(c,q){const ct=(t(c.name)+' '+c.name).toLowerCase().includes(q),tps=c.topics.map(p=>{const pm=ct||(t(p.title)+' '+p.title+' '+t(p.desc)).toLowerCase().includes(q);return{p,it:p.items.filter(i=>(!libS.ty||i.type==libS.ty)&&(pm||rMatch(i,q)))}}).filter(x=>x.it.length);
-if(!tps.length)return'';const nr=tps.reduce((a,x)=>a+x.it.length,0),op=libS.open[c.id]!==undefined?libS.open[c.id]:!!(q||libS.ty);
-return`<section class="c crs${op?' open':''}" id="crs-${c.id}" tabindex="-1"><h3 class="crh"><button type="button" class="crb" id="cb-${c.id}" aria-expanded="${op}" aria-controls="cp-${c.id}" data-cr="${c.id}">${thumb(t(c.name))}<span class="crt"><b>${esc(t(c.name))}</b><small class="mu">${t('{0} topics · {1} resources',tps.length,nr)}</small></span><svg class="chv" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button></h3><div class="cpn" id="cp-${c.id}" role="region" aria-labelledby="cb-${c.id}" ${op?'':'hidden'}><div class="tps">${tps.map(({p,it})=>`<div class="tp"><h4>${esc(t(p.title))}</h4>${p.desc?`<p class="rd">${esc(t(p.desc))}</p>`:''}<ul class="rl">${it.map(resItem).join('')}</ul></div>`).join('')}</div></div></section>`}
-function libDraw(){const q=libS.q.trim().toLowerCase(),vc=vCourses().filter(c=>!libS.c||c.id==libS.c),grp=(k,h)=>{const h2=vc.filter(c=>k=='common'?c.g=='common':c.g!='common').map(c=>crsCard(c,q)).join('');return h2?`<div class="grp"><h3>${h}</h3></div><div class="lg2">${h2}</div>`:''};
-const out=grp('common',t('Common courses'))+grp('major',t('Major-specific courses')+(S.major?' · '+S.major:''));
-$('#lgx').innerHTML=out||`<p class="mu">${t('No courses or resources match your search.')}</p>`;
-if(libFocus){const e=$('#crs-'+libFocus);libFocus='';if(e){e.scrollIntoView({block:'start'});e.focus({preventScroll:true})}}}
-function library(){const vc=vCourses();let nt=0,nr=0;vc.forEach(c=>{nt+=c.topics.length;c.topics.forEach(p=>nr+=p.items.length)});
-$('#m').innerHTML=`${cv('library',t('Course Library'),t('Lecture files, slides, recordings, references and attendance links for every course.'))}<div class="g g4 ov">${[[vc.length,'Courses'],[nt,'Topics'],[nr,'Resources']].map(([n,k])=>`<div class="c"><div class="big">${n}</div><div class="mu">${t(k)}</div></div>`).join('')}</div><div class="tb"><input id="lq" type="search" placeholder="${t('Search courses, lectures or resources…')}" aria-label="${t('Search courses, lectures or resources…')}" value="${esc(libS.q)}"><select id="lc" aria-label="${t('Course')}"><option value="">${t('All courses')}</option>${vc.map(c=>`<option value="${c.id}" ${c.id==libS.c?'selected':''}>${esc(t(c.name))}</option>`).join('')}</select><select id="lt" aria-label="${t('Type')}"><option value="">${t('All resource types')}</option>${Object.entries(RT).map(([k,v])=>`<option value="${k}" ${k==libS.ty?'selected':''}>${t(v[0])}</option>`).join('')}</select><button class="btn s" type="button" id="lx">${t('Expand all')}</button><button class="btn s" type="button" id="ly">${t('Collapse all')}</button></div><div id="lgx"></div>`;
-$('#lq').oninput=e=>{libS.q=e.target.value;libDraw()};$('#lc').onchange=e=>{libS.c=e.target.value;libDraw()};$('#lt').onchange=e=>{libS.ty=e.target.value;libDraw()};
-const all=v=>{vc.forEach(c=>libS.open[c.id]=v);libDraw()};$('#lx').onclick=()=>all(true);$('#ly').onclick=()=>all(false);
-$('#lgx').onclick=e=>{const b=e.target.closest('[data-cr]'),g=e.target.closest('[data-ga]');if(b){const id=b.dataset.cr,o=b.getAttribute('aria-expanded')!='true';libS.open[id]=o;b.setAttribute('aria-expanded',o);$('#cp-'+id).hidden=!o;$('#crs-'+id).classList.toggle('open',o)}else if(g)goAsg(g.dataset.ga)};libDraw()}
-if(matchMedia('(hover:hover)').matches)document.addEventListener('pointermove',e=>{const g=e.target.closest&&e.target.closest('.c,.rs,.mjc');if(!g)return;const r=g.getBoundingClientRect();g.style.setProperty('--mx',(e.clientX-r.left)+'px');g.style.setProperty('--my',(e.clientY-r.top)+'px')},{passive:true});
+const rMatch = (it, q) =>
+  !q ||
+  [
+    it.title,
+    t(it.title),
+    it.note,
+    it.desc,
+    t(it.note || ""),
+    t((RT[it.type] || RT.other)[0]),
+  ]
+    .join(" ")
+    .toLowerCase()
+    .includes(q);
+function resItem(it) {
+  const [lb, cl] = RT[it.type] || RT.other,
+    a = it.asg && ASGD.find((x) => x.id == it.asg),
+    u = okU(it.url),
+    s = a && asgSt(a);
+  return `<li class="rs" style="--tc:${cl}"><span class="ri" aria-hidden="true">${ip((RT[it.type] || RT.other)[2])}</span><div class="rb"><b class="rt" dir="auto">${esc(t(it.title))}</b><div class="rm"><span class="tg ty">${t(lb)}</span>${it.count ? `<span class="tg cn">${t("{0} Videos", it.count)}</span>` : ""}${a ? `<span class="tg ${s}">${t(ASL[s])}</span>` : ""}</div>${it.desc ? `<p class="rd">${esc(t(it.desc))}</p>` : ""}${it.note ? `<p class="rd">${esc(t(it.note))}</p>` : ""}${it.ended ? `<p class="rd">${t("Meeting ended: {0}", new Date(it.ended).toLocaleString(LOC(), { timeZone: TZ, weekday: "long", day: "numeric", month: "long", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true }))}</p>` : ""}${a ? `<p class="rd">${t("Opening date")}: ${dfo(Date.parse(a.opens))} · ${t("Due date")}: ${dfo(Date.parse(a.due))}, ${tmf(Date.parse(a.due))}</p>` : ""}${a && a.instr ? `<p class="rd pl" dir="auto"><b>${t("Instructions")}:</b> ${esc(t(a.instr))}</p>` : ""}</div><div class="ra">${u ? `<a class="btn s sm" href="${esc(u)}" target="_blank" rel="noopener noreferrer">${t("Open link")}</a>` : a ? "" : `<span class="na">${t("No link yet")}</span>`}${a ? `<button class="btn s sm" type="button" data-ga="${esc(a.id)}">${t("View in Assignments")}</button>` : ""}</div></li>`;
+}
+function crsCard(c, q) {
+  const ct = (t(c.name) + " " + c.name).toLowerCase().includes(q),
+    tps = c.topics
+      .map((p) => {
+        const pm =
+          ct ||
+          (t(p.title) + " " + p.title + " " + t(p.desc))
+            .toLowerCase()
+            .includes(q);
+        return {
+          p,
+          it: p.items.filter(
+            (i) => (!libS.ty || i.type == libS.ty) && (pm || rMatch(i, q)),
+          ),
+        };
+      })
+      .filter((x) => x.it.length);
+  if (!tps.length) return "";
+  const nr = tps.reduce((a, x) => a + x.it.length, 0),
+    op = libS.open[c.id] !== undefined ? libS.open[c.id] : !!(q || libS.ty);
+  return `<section class="c crs${op ? " open" : ""}" id="crs-${c.id}" tabindex="-1"><h3 class="crh"><button type="button" class="crb" id="cb-${c.id}" aria-expanded="${op}" aria-controls="cp-${c.id}" data-cr="${c.id}">${thumb(t(c.name))}<span class="crt"><b>${esc(t(c.name))}</b><small class="mu">${t("{0} topics · {1} resources", tps.length, nr)}</small></span><svg class="chv" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button></h3><div class="cpn" id="cp-${c.id}" role="region" aria-labelledby="cb-${c.id}" ${op ? "" : "hidden"}><div class="tps">${tps.map(({ p, it }) => `<div class="tp"><h4>${esc(t(p.title))}</h4>${p.desc ? `<p class="rd">${esc(t(p.desc))}</p>` : ""}<ul class="rl">${it.map(resItem).join("")}</ul></div>`).join("")}</div></div></section>`;
+}
+function libDraw() {
+  const q = libS.q.trim().toLowerCase(),
+    vc = vCourses().filter((c) => !libS.c || c.id == libS.c),
+    grp = (k, h) => {
+      const h2 = vc
+        .filter((c) => (k == "common" ? c.g == "common" : c.g != "common"))
+        .map((c) => crsCard(c, q))
+        .join("");
+      return h2
+        ? `<div class="grp"><h3>${h}</h3></div><div class="lg2">${h2}</div>`
+        : "";
+    };
+  const out =
+    grp("common", t("Common courses")) +
+    grp(
+      "major",
+      t("Major-specific courses") + (S.major ? " · " + S.major : ""),
+    );
+  $("#lgx").innerHTML =
+    out ||
+    `<p class="mu">${t("No courses or resources match your search.")}</p>`;
+  if (libFocus) {
+    const e = $("#crs-" + libFocus);
+    libFocus = "";
+    if (e) {
+      e.scrollIntoView({ block: "start" });
+      e.focus({ preventScroll: true });
+    }
+  }
+}
+function library() {
+  const vc = vCourses();
+  let nt = 0,
+    nr = 0;
+  vc.forEach((c) => {
+    nt += c.topics.length;
+    c.topics.forEach((p) => (nr += p.items.length));
+  });
+  $("#m").innerHTML =
+    `${cv("library", t("Course Library"), t("Lecture files, slides, recordings, references and attendance links for every course."))}<div class="g g4 ov">${[
+      [vc.length, "Courses"],
+      [nt, "Topics"],
+      [nr, "Resources"],
+    ]
+      .map(
+        ([n, k]) =>
+          `<div class="c"><div class="big">${n}</div><div class="mu">${t(k)}</div></div>`,
+      )
+      .join(
+        "",
+      )}</div><div class="tb"><input id="lq" type="search" placeholder="${t("Search courses, lectures or resources…")}" aria-label="${t("Search courses, lectures or resources…")}" value="${esc(libS.q)}"><select id="lc" aria-label="${t("Course")}"><option value="">${t("All courses")}</option>${vc.map((c) => `<option value="${c.id}" ${c.id == libS.c ? "selected" : ""}>${esc(t(c.name))}</option>`).join("")}</select><select id="lt" aria-label="${t("Type")}"><option value="">${t("All resource types")}</option>${Object.entries(
+      RT,
+    )
+      .map(
+        ([k, v]) =>
+          `<option value="${k}" ${k == libS.ty ? "selected" : ""}>${t(v[0])}</option>`,
+      )
+      .join(
+        "",
+      )}</select><button class="btn s" type="button" id="lx">${t("Expand all")}</button><button class="btn s" type="button" id="ly">${t("Collapse all")}</button></div><div id="lgx"></div>`;
+  $("#lq").oninput = (e) => {
+    libS.q = e.target.value;
+    libDraw();
+  };
+  $("#lc").onchange = (e) => {
+    libS.c = e.target.value;
+    libDraw();
+  };
+  $("#lt").onchange = (e) => {
+    libS.ty = e.target.value;
+    libDraw();
+  };
+  const all = (v) => {
+    vc.forEach((c) => (libS.open[c.id] = v));
+    libDraw();
+  };
+  $("#lx").onclick = () => all(true);
+  $("#ly").onclick = () => all(false);
+  $("#lgx").onclick = (e) => {
+    const b = e.target.closest("[data-cr]"),
+      g = e.target.closest("[data-ga]");
+    if (b) {
+      const id = b.dataset.cr,
+        o = b.getAttribute("aria-expanded") != "true";
+      libS.open[id] = o;
+      b.setAttribute("aria-expanded", o);
+      $("#cp-" + id).hidden = !o;
+      $("#crs-" + id).classList.toggle("open", o);
+    } else if (g) goAsg(g.dataset.ga);
+  };
+  libDraw();
+}
+let pmQ = 0;
+if (matchMedia("(hover:hover)").matches)
+  document.addEventListener(
+    "pointermove",
+    (e) => {
+      const g = e.target.closest && e.target.closest(".c,.rs,.mjc");
+      if (!g || pmQ) return;
+      pmQ = requestAnimationFrame(() => {
+        pmQ = 0;
+        const r = g.getBoundingClientRect();
+        g.style.setProperty("--mx", e.clientX - r.left + "px");
+        g.style.setProperty("--my", e.clientY - r.top + "px");
+      });
+    },
+    { passive: true },
+  );
 /* ---- theme + language switchers (preferences saved separately from app data) ---- */
-function applyTheme(){const d=THEME=='dark',b=$('#thm'),l=t(d?'Switch to light mode':'Switch to dark mode');document.documentElement.dataset.theme=THEME;b.setAttribute('aria-pressed',d);b.setAttribute('aria-label',l);b.title=l;const m=document.querySelector('meta[name=theme-color]');if(m)m.content=d?'#0b0e1d':'#eef0fb'}
-function applyLang(){const h=document.documentElement;h.lang=LANG;h.dir=LANG=='ar'?'rtl':'ltr';document.querySelectorAll('[data-i]').forEach(e=>e.textContent=t(e.dataset.i));document.querySelectorAll('[data-ip]').forEach(e=>e.placeholder=t(e.dataset.ip));document.querySelectorAll('[data-ia]').forEach(e=>{const v=t(e.dataset.ia);e.setAttribute('aria-label',v);e.title=v});const g=$('#lgt'),lb=t(LANG=='ar'?'Switch to English':'Switch to Arabic');g.textContent=LANG=='ar'?'English':'العربية';g.lang=LANG=='ar'?'en':'ar';$('#lg').setAttribute('aria-label',lb);$('#lg').title=lb;const md=document.querySelector('meta[name=description]');if(md)md.content=t('Unihub for National University Students — a convenient platform for organizing academic activities and managing student life.');applyTheme();updMj()}
-$('#mj').onclick=()=>pickMajor(false);
-$('#thm').onclick=()=>{THEME=THEME=='dark'?'light':'dark';try{localStorage.setItem(TK,THEME)}catch(e){}applyTheme()};
-$('#lg').onclick=()=>{LANG=LANG=='ar'?'en':'ar';try{localStorage.setItem(LK,LANG)}catch(e){}applyLang();$('#np').hidden=true;$('#drop').hidden=true;({home,deadlines,academics,library,assignments,books,goals,habits,budget,about})[P]();bell()};
+function applyTheme() {
+  const d = THEME == "dark",
+    b = $("#thm"),
+    l = t(d ? "Switch to light mode" : "Switch to dark mode");
+  document.documentElement.dataset.theme = THEME;
+  b.setAttribute("aria-pressed", d);
+  b.setAttribute("aria-label", l);
+  b.title = l;
+  const m = document.querySelector("meta[name=theme-color]");
+  if (m) m.content = d ? "#0b0e1d" : "#eef0fb";
+}
+function applyLang() {
+  const h = document.documentElement;
+  h.lang = LANG;
+  h.dir = LANG == "ar" ? "rtl" : "ltr";
+  document
+    .querySelectorAll("[data-i]")
+    .forEach((e) => (e.textContent = t(e.dataset.i)));
+  document
+    .querySelectorAll("[data-ip]")
+    .forEach((e) => (e.placeholder = t(e.dataset.ip)));
+  document.querySelectorAll("[data-ia]").forEach((e) => {
+    const v = t(e.dataset.ia);
+    e.setAttribute("aria-label", v);
+    e.title = v;
+  });
+  const g = $("#lgt"),
+    lb = t(LANG == "ar" ? "Switch to English" : "Switch to Arabic");
+  g.textContent = LANG == "ar" ? "English" : "العربية";
+  g.lang = LANG == "ar" ? "en" : "ar";
+  $("#lg").setAttribute("aria-label", lb);
+  $("#lg").title = lb;
+  const md = document.querySelector("meta[name=description]");
+  if (md)
+    md.content = t(
+      "Unihub for National University Students — a convenient platform for organizing academic activities and managing student life.",
+    );
+  applyTheme();
+  updMj();
+}
+$("#mj").onclick = () => pickMajor(false);
+$("#thm").onclick = () => {
+  THEME = THEME == "dark" ? "light" : "dark";
+  try {
+    localStorage.setItem(TK, THEME);
+  } catch (e) {}
+  applyTheme();
+};
+$("#lg").onclick = () => {
+  LANG = LANG == "ar" ? "en" : "ar";
+  try {
+    localStorage.setItem(LK, LANG);
+  } catch (e) {}
+  applyLang();
+  $("#np").hidden = true;
+  $("#drop").hidden = true;
+  ({
+    home,
+    deadlines,
+    academics,
+    library,
+    assignments,
+    books,
+    goals,
+    habits,
+    budget,
+    about,
+  })[P]();
+  bell();
+};
 applyLang();
-const _s=show;show=function(p){_s(p);bell()};
-show(['home','deadlines','academics','library','assignments','books','goals','habits','budget','about'].includes(location.hash.slice(1))?location.hash.slice(1):'home');
-if(!S.major)pickMajor(true);
+const _s = show;
+show = function (p) {
+  _s(p);
+  bell();
+};
+show(
+  [
+    "home",
+    "deadlines",
+    "academics",
+    "library",
+    "assignments",
+    "books",
+    "goals",
+    "habits",
+    "budget",
+    "about",
+  ].includes(location.hash.slice(1))
+    ? location.hash.slice(1)
+    : "home",
+);
+if (!S.major) pickMajor(true);
