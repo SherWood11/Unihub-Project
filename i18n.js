@@ -559,4 +559,22 @@ window.UNIHUB_AR = {
     "عرِّف:\n\n1. الحساب العددي وما الفرق بينه وبين الطريقة التحليلية\n2. الأخطاء وكيفية حسابها",
   "Write a program using any suitable programming language to solve the previous example translate":
     "اكتب برنامجًا باستخدام أي لغة برمجة مناسبة لحل المثال السابق (translate)",
+  /* Assignments redesign + homepage sections */
+  Submitted: "تم التسليم",
+  "Not Yet Open": "لم يُفتح بعد",
+  "Mark as Submitted": "تحديد كمُسلَّم",
+  "Undo Submission": "التراجع عن التسليم",
+  "Assignment Overview": "نظرة عامة على التكليفات",
+  "Total assignments": "إجمالي التكليفات",
+  "View All Assignments": "عرض كل التكليفات",
+  "Needs attention": "تحتاج إلى انتباهك",
+  "Submission deadline": "موعد التسليم",
+  "All assignments are submitted 🎉": "تم تسليم جميع التكليفات 🎉",
+  "No assignments available for your courses yet.":
+    "لا توجد تكليفات لمقرراتك حتى الآن.",
+  "Courses on the Platform": "المقررات على المنصة",
+  "View Course": "عرض المقرر",
+  "View All Courses": "عرض كل المقررات",
+  Common: "مشترك",
+  "No courses available yet.": "لا توجد مقررات متاحة بعد.",
 };

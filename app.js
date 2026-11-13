@@ -18,6 +18,13 @@ const t = (k, ...a) => {
     return a.length ? s.replace(/\{(\d+)\}/g, (m, i) => a[i] ?? "") : s;
   },
   LOC = () => (LANG == "ar" ? "ar-SD-u-ca-gregory-nu-latn" : "en-GB");
+/* course names: English is canonical; in Arabic mode the existing i18n translation follows in parentheses.
+   LRI/PDI isolates keep "English (Arabic)" in that order inside RTL text. cAll() = both names, used for search. */
+const cLbl = (n) =>
+    LANG == "ar" && AR[n] && AR[n] !== n
+      ? "\u2066" + n + " (" + AR[n] + ")\u2069"
+      : n,
+  cAll = (n) => n + " " + (AR[n] || "");
 const K = "unihub-v1",
   $ = (s) => document.querySelector(s),
   esc = (s) =>
@@ -673,7 +680,7 @@ function editBk(id) {
 }
 /* ---- views ---- */
 const rowDl = (x) =>
-  `<div class="row"><input type="checkbox" ${x.done ? "checked" : ""} data-t="${x.id}" aria-label="${t("Done")}"><div><b>${esc(x.title)}</b><div class="mu">${esc(x.subject)} · ${fmt(x.date)}${x.time ? " · " + x.time : ""}</div></div><span class="tg ${st(x)}">${t(LB[st(x)])}</span></div>`;
+  `<div class="row"><input type="checkbox" ${x.done ? "checked" : ""} data-t="${x.id}" aria-label="${t("Done")}"><div><b>${esc(x.title)}</b><div class="mu">${esc(cLbl(x.subject))} · ${fmt(x.date)}${x.time ? " · " + x.time : ""}</div></div><span class="tg ${st(x)}">${t(LB[st(x)])}</span></div>`;
 function wire() {
   document.querySelectorAll("[data-t]:not(#tbd [data-t])").forEach(
     (e) =>
@@ -706,16 +713,18 @@ function home() {
   const cs = SUBS()
     .map((s) => {
       const l = V().filter((x) => x.subject == s);
-      return `<div style="margin:9px 0"><div style="display:flex;justify-content:space-between"><span>${esc(s)}</span><span class="mu">${l.filter((x) => x.done).length}/${l.length}</span></div>${bar(pct(l.filter((x) => x.done).length, l.length))}</div>`;
+      return `<div style="margin:9px 0"><div style="display:flex;justify-content:space-between"><span>${esc(cLbl(s))}</span><span class="mu">${l.filter((x) => x.done).length}/${l.length}</span></div>${bar(pct(l.filter((x) => x.done).length, l.length))}</div>`;
     })
     .join("");
   $("#m").innerHTML =
     `${cv("home", t("Welcome to UniHub"), t("Today is {0}. Here is where your studies stand.", fmt(TODAY)))}
 <div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0"><button class="btn" data-add="d">${t("＋ Add deadline")}</button><button class="btn s" data-add="b">${t("＋ Add book")}</button><button class="btn s" data-p="deadlines">${t("All deadlines")}</button><button class="btn s" data-p="academics">${t("Progress")}</button></div>
 <div class="g g4"><div class="c"><div class="big">${V().length - dn}</div><div class="mu">${t("Pending")}</div></div><div class="c"><div class="big" style="color:var(--ok)">${dn}</div><div class="mu">${t("Completed")}</div></div><div class="c"><div class="big" style="color:var(--bad)">${o}</div><div class="mu">${t("Overdue")}</div></div><div class="c"><div class="big" style="color:var(--wn)">${wk}</div><div class="mu">${t("Due in 7 days")}</div></div></div>
-<div class="g g2" style="margin-top:14px">${hw()}<div class="c"><h3>${t("Upcoming deadlines")}</h3>${nx.map(rowDl).join("") || '<p class="mu">' + t("Nothing pending. Nice work!") + "</p>"}</div>
+<section class="hs" id="hasg" aria-labelledby="hast">${homeAsgHtml()}</section>
+<div class="g g2" style="margin-top:22px">${hw()}<div class="c"><h3>${t("Upcoming deadlines")}</h3>${nx.map(rowDl).join("") || '<p class="mu">' + t("Nothing pending. Nice work!") + "</p>"}</div>
 <div class="c"><h3>${t("Today’s top priorities")}</h3><div class="hint">${t("Write up to three things you most want to finish today.")}</div>${S.top.map((v, i) => `<input data-l="top" data-i="${i}" value="${esc(v)}" placeholder="${t("Priority {0}", i + 1)}" style="margin-bottom:6px">`).join("")}<h3 style="margin-top:14px">${t("Daily goals")}</h3><div class="hint">${t("Small goals for today, e.g. “Review chapter 3”.")}</div>${S.goals.map((v, i) => `<input data-l="goals" data-i="${i}" value="${esc(v)}" placeholder="${t("Goal {0}", i + 1)}" style="margin-bottom:6px">`).join("")}</div>
-<div class="c" style="grid-column:1/-1"><h3>${t("Progress by course")}</h3><div class="g g2" style="gap:0 24px">${cs}</div></div></div>`;
+<div class="c" style="grid-column:1/-1"><h3>${t("Progress by course")}</h3><div class="g g2" style="gap:0 24px">${cs}</div></div></div>
+<section class="hs" id="hcrs" aria-labelledby="hcrt">${homeCrsHtml()}</section>`;
   document.querySelectorAll("[data-l]").forEach(
     (e) =>
       (e.oninput = () => {
@@ -726,6 +735,7 @@ function home() {
   navWire();
   wire();
   hwire();
+  homeBind();
 }
 function about() {
   $("#m").innerHTML =
@@ -741,7 +751,10 @@ function deadlines() {
   $("#m").innerHTML =
     `${cv("deadlines", t("Deadlines"), t("Lectures, practicals, exams and assignments. Tick a row when it’s done."))}
 <div class="tb"><input id="fq" placeholder="${t("Filter…")}" aria-label="${t("Filter…")}" value="${esc(F.q)}"><select id="fs" aria-label="${t("Course")}"><option value="">${t("All courses")}</option>${SUBS()
-      .map((s) => `<option ${s == F.sub ? "selected" : ""}>${esc(s)}</option>`)
+      .map(
+        (s) =>
+          `<option value="${esc(s)}" ${s == F.sub ? "selected" : ""}>${esc(cLbl(s))}</option>`,
+      )
       .join(
         "",
       )}</select><select id="ft" aria-label="${t("Type")}"><option value="">${t("All types")}</option>${TYPES()
@@ -782,7 +795,9 @@ const list = () => {
     .filter(
       (x) =>
         (!q ||
-          (x.title + x.notes + x.subject + x.task).toLowerCase().includes(q)) &&
+          (x.title + x.notes + cAll(x.subject) + x.task)
+            .toLowerCase()
+            .includes(q)) &&
         (!F.sub || x.subject == F.sub) &&
         (!F.type || x.task == F.type) &&
         (!F.stat || st(x) == F.stat),
@@ -801,7 +816,7 @@ function fill() {
     l
       .map(
         (x) =>
-          `<tr class="${x.done ? "dn" : ""}"><td><input type="checkbox" ${x.done ? "checked" : ""} data-t="${x.id}" aria-label="${t("Done")}"></td><td><b>${esc(x.title)}</b><div class="mu">${esc(t(x.task))}${x.priority && x.priority != "Normal" ? " · " + t("{0} priority", t(x.priority)) : ""}</div></td><td>${esc(x.subject)}</td><td>${fmt(x.date)}${x.time ? '<br><bdi dir="ltr">' + x.time + (x.end ? "–" + x.end : "") + "</bdi>" : ""}</td><td><span class="tg ${st(x)}">${t(LB[st(x)])}</span></td><td class="mu" style="white-space:pre-line;max-width:220px">${esc(x.notes)}</td><td style="white-space:nowrap"><a href="${esc(gcal(x))}" target="_blank" rel="noopener noreferrer">${t("＋ Google")}</a><br><button class="btn s sm" data-e="${x.id}">${t("Edit")}</button> <button class="btn s sm" data-x="${x.id}">${t("Delete")}</button></td></tr>`,
+          `<tr class="${x.done ? "dn" : ""}"><td><input type="checkbox" ${x.done ? "checked" : ""} data-t="${x.id}" aria-label="${t("Done")}"></td><td><b>${esc(x.title)}</b><div class="mu">${esc(t(x.task))}${x.priority && x.priority != "Normal" ? " · " + t("{0} priority", t(x.priority)) : ""}</div></td><td>${esc(cLbl(x.subject))}</td><td>${fmt(x.date)}${x.time ? '<br><bdi dir="ltr">' + x.time + (x.end ? "–" + x.end : "") + "</bdi>" : ""}</td><td><span class="tg ${st(x)}">${t(LB[st(x)])}</span></td><td class="mu" style="white-space:pre-line;max-width:220px">${esc(x.notes)}</td><td style="white-space:nowrap"><a href="${esc(gcal(x))}" target="_blank" rel="noopener noreferrer">${t("＋ Google")}</a><br><button class="btn s sm" data-e="${x.id}">${t("Edit")}</button> <button class="btn s sm" data-x="${x.id}">${t("Delete")}</button></td></tr>`,
       )
       .join("") ||
     `<tr><td colspan="7" class="mu">${t("No deadlines match these filters.")}</td></tr>`;
@@ -850,7 +865,7 @@ function academics() {
             .sort((p, q) => p.date.localeCompare(q.date))[0],
           ty = {};
         l.forEach((x) => (ty[x.task] = (ty[x.task] || 0) + 1));
-        return `<div class="c"><h3>${esc(s)}</h3><div class="mu">${t("{0} of {1} done", n, l.length)} · ${pct(n, l.length)}%</div>${bar(pct(n, l.length))}<p class="mu">${Object.entries(
+        return `<div class="c"><h3>${esc(cLbl(s))}</h3><div class="mu">${t("{0} of {1} done", n, l.length)} · ${pct(n, l.length)}%</div>${bar(pct(n, l.length))}<p class="mu">${Object.entries(
           ty,
         )
           .map(([k, v]) => v + " " + esc(t(k)).toLowerCase())
@@ -1856,19 +1871,28 @@ $("#q").oninput = () => {
     d.hidden = true;
     return;
   }
-  const a = V()
-      .filter((x) => (x.title + x.subject).toLowerCase().includes(q))
+  const c = vCourses()
+      .filter((x) => cAll(x.name).toLowerCase().includes(q))
+      .slice(0, 4),
+    a = V()
+      .filter((x) => (x.title + cAll(x.subject)).toLowerCase().includes(q))
       .slice(0, 6),
     b = S.bk
       .filter((x) => (x.name + x.author).toLowerCase().includes(q))
       .slice(0, 4);
   d.innerHTML =
-    a
+    c
       .map(
         (x) =>
-          `<button class="it" data-r="d" data-v="${esc(x.title)}"><b>${esc(x.title)}</b><div class="mu">${t("Deadline")} · ${fmt(x.date)}</div></button>`,
+          `<button class="it" data-r="c" data-v="${esc(x.id)}"><b>${esc(cLbl(x.name))}</b><div class="mu">${t("Course")} · ${t("Course Library")}</div></button>`,
       )
       .join("") +
+      a
+        .map(
+          (x) =>
+            `<button class="it" data-r="d" data-v="${esc(x.title)}"><b>${esc(x.title)}</b><div class="mu">${t("Deadline")} · ${fmt(x.date)}</div></button>`,
+        )
+        .join("") +
       b
         .map(
           (x) =>
@@ -1879,7 +1903,9 @@ $("#q").oninput = () => {
   d.querySelectorAll("[data-r]").forEach(
     (e) =>
       (e.onclick = () => {
-        if (e.dataset.r == "d") {
+        if (e.dataset.r == "c") {
+          goLib(e.dataset.v);
+        } else if (e.dataset.r == "d") {
           F = { q: e.dataset.v, sub: "", type: "", stat: "", sort: "date" };
           show("deadlines");
         } else {
@@ -2090,15 +2116,15 @@ const vCourses = () =>
     LIBD.courses.filter((c) => c.g == "common" || c.g == S.major),
   cName = (id) => {
     const c = LIBD.courses.find((x) => x.id == id);
-    return c ? t(c.name) : id;
+    return c ? cLbl(c.name) : id;
   };
-/* assignment status uses real instants (fixed +02:00 = Africa/Khartoum), so it is correct on any device timezone */
+/* assignment status uses real instants (fixed +02:00 = Africa/Khartoum), so it is correct on any device timezone.
+   Four statuses only; "Submitted" (the existing local S.asgDone flag) always wins. Due-soon is an extra urgency flag, not a status. */
 const ASL = {
-  upcoming: "Upcoming",
-  open: "Open",
-  soon: "Due soon",
+  pending: "Pending",
   overdue: "Overdue",
-  done: "Completed",
+  upcoming: "Not Yet Open",
+  done: "Submitted",
 };
 const asgSt = (a) => {
   const n = Date.now(),
@@ -2106,14 +2132,28 @@ const asgSt = (a) => {
     d = Date.parse(a.due);
   return S.asgDone[a.id]
     ? "done"
-    : n > d
-      ? "overdue"
-      : n < o
-        ? "upcoming"
-        : d - n <= 1728e5
-          ? "soon"
-          : "open";
+    : n < o
+      ? "upcoming"
+      : n > d
+        ? "overdue"
+        : "pending";
 };
+const asgUrg = (a) =>
+  asgSt(a) == "pending" && Date.parse(a.due) - Date.now() <= 1728e5;
+const ASI = {
+  done: '<circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/>',
+  pending: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  overdue: '<path d="M12 3.5l9.5 16.5h-19z"/><path d="M12 10v4.5M12 17.4v.1"/>',
+  upcoming:
+    '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+};
+const asIc = (k) =>
+    `<svg class="asi" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ASI[k]}</svg>`,
+  asBadge = (k) => `<span class="tg as as-${k}">${asIc(k)}${t(ASL[k])}</span>`,
+  asUrgTag = () =>
+    `<span class="tg urgt"><svg class="asi" viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg>${t("Due soon")}</span>`,
+  arrI =
+    '<svg class="arr" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
 const dur = (ms) => {
   const m = Math.floor(Math.max(0, ms) / 6e4),
     d = Math.floor(m / 1440),
@@ -2153,14 +2193,36 @@ function asgCard(a) {
     o = Date.parse(a.opens),
     d = Date.parse(a.due),
     cd = cdTxt(a),
-    u = okU(a.submitUrl);
-  return `<article class="c asg ${s}" id="asg-${esc(a.id)}" data-aid="${esc(a.id)}" tabindex="-1" aria-labelledby="at-${esc(a.id)}"><div class="ah"><div><div class="mu">${esc(cName(a.course))}</div><h3 id="at-${esc(a.id)}" dir="auto">${esc(t(a.title))}</h3></div><span class="tg ${s}">${t(ASL[s])}</span></div>
+    u = okU(a.submitUrl),
+    ug = asgUrg(a);
+  return `<article class="c asg as-${s}${ug ? " urg" : ""}" id="asg-${esc(a.id)}" data-aid="${esc(a.id)}" tabindex="-1" aria-labelledby="at-${esc(a.id)}"><div class="ah"><div class="at"><div class="mu cn">${esc(cName(a.course))}</div><h3 id="at-${esc(a.id)}" dir="auto">${esc(t(a.title))}</h3></div><div class="ab">${asBadge(s)}${ug ? asUrgTag() : ""}</div></div>
 <dl class="ad"><div><dt>${t("Opening date")}</dt><dd>${dfo(o)}${a.opensTime ? " · " + tmf(o) : ""}</dd></div><div><dt>${t("Due date")}</dt><dd>${dfo(d)}</dd></div><div><dt>${t("Due time")}</dt><dd>${tmf(d)}</dd></div></dl>
-${a.instr ? `<div class="ai"><b>${t("Instructions")}</b><p dir="auto">${esc(t(a.instr))}</p></div>` : ""}<p class="cd" ${cd ? "" : "hidden"}>${cd}</p><div class="aa"><button class="btn s sm" type="button" data-ad="${esc(a.id)}" aria-pressed="${s == "done"}">${t(s == "done" ? "Mark as not completed" : "Mark as completed")}</button>${u ? `<a class="btn sm" href="${esc(u)}" target="_blank" rel="noopener noreferrer">${t("Submit assignment")}</a>` : ""}<button class="btn s sm" type="button" data-gl="${esc(a.course)}">${t("Open in Course Library")}</button></div></article>`;
+${a.instr ? `<div class="ai"><b>${t("Instructions")}</b><p dir="auto">${esc(t(a.instr))}</p></div>` : ""}<p class="cd" ${cd ? "" : "hidden"}>${cd}</p><div class="aa"><button class="btn s sm" type="button" data-ad="${esc(a.id)}" aria-pressed="${s == "done"}">${t(s == "done" ? "Undo Submission" : "Mark as Submitted")}</button>${u ? `<a class="btn sm" href="${esc(u)}" target="_blank" rel="noopener noreferrer">${t("Submit assignment")}</a>` : ""}<button class="btn s sm" type="button" data-gl="${esc(a.course)}">${t("Open in Course Library")}</button></div></article>`;
 }
+/* shared by the Assignments page and the homepage: one source (UNIHUB_ASG + major filter), counted once per status */
+const asgCounts = () => {
+    const all = vAsg(),
+      c = { total: all.length, done: 0, pending: 0, overdue: 0, upcoming: 0 };
+    all.forEach((a) => c[asgSt(a)]++);
+    return c;
+  },
+  asgOv = () => {
+    const c = asgCounts();
+    return [
+      ["", c.total, "Total assignments"],
+      ["done", c.done, "Submitted"],
+      ["pending", c.pending, "Pending"],
+      ["overdue", c.overdue, "Overdue"],
+      ["upcoming", c.upcoming, "Not Yet Open"],
+    ]
+      .map(
+        ([k, n, l]) =>
+          `<div class="c sc${k ? " as-" + k : ""}"><div class="big">${n}</div><div class="mu">${k ? asIc(k) : ""}${t(l)}</div></div>`,
+      )
+      .join("");
+  };
 function asgDraw() {
   const all = vAsg(),
-    stt = all.map(asgSt),
     q = asgS.q.trim().toLowerCase(),
     l = all
       .filter(
@@ -2173,9 +2235,7 @@ function asgDraw() {
               " " +
               t(a.title) +
               " " +
-              cName(a.course) +
-              " " +
-              LIBD.courses.find((c) => c.id == a.course).name
+              cAll(LIBD.courses.find((c) => c.id == a.course).name)
             )
               .toLowerCase()
               .includes(q)),
@@ -2184,21 +2244,8 @@ function asgDraw() {
         (a, b) =>
           (Date.parse(a.due) - Date.parse(b.due)) *
           (asgS.sort == "asc" ? 1 : -1),
-      ),
-    pe = stt.filter(
-      (x) => x == "upcoming" || x == "open" || x == "soon",
-    ).length;
-  $("#aov").innerHTML = [
-    [all.length, "Total", ""],
-    [pe, "Pending", ""],
-    [stt.filter((x) => x == "done").length, "Completed", "color:var(--ok)"],
-    [stt.filter((x) => x == "overdue").length, "Overdue", "color:var(--bad)"],
-  ]
-    .map(
-      ([n, k, s]) =>
-        `<div class="c"><div class="big" style="${s}">${n}</div><div class="mu">${t(k)}</div></div>`,
-    )
-    .join("");
+      );
+  $("#aov").innerHTML = asgOv();
   $("#acnt").textContent = t("{0} of {1} shown", l.length, all.length);
   $("#ag").innerHTML =
     l.map(asgCard).join("") ||
@@ -2216,7 +2263,7 @@ function asgDraw() {
 function assignments() {
   const cs = vCourses().filter((c) => ASGD.some((a) => a.course == c.id));
   $("#m").innerHTML =
-    `${cv("assignments", t("Assignments"), t("Your assignments, opening dates, deadlines and live countdowns."))}<div class="g g4 ov" id="aov"></div><div class="tb"><input id="aq" type="search" placeholder="${t("Search assignments…")}" aria-label="${t("Search assignments…")}" value="${esc(asgS.q)}"><select id="ac" aria-label="${t("Course")}"><option value="">${t("All courses")}</option>${cs.map((c) => `<option value="${c.id}" ${c.id == asgS.c ? "selected" : ""}>${esc(t(c.name))}</option>`).join("")}</select><select id="as" aria-label="${t("Status")}"><option value="">${t("All statuses")}</option>${Object.entries(
+    `${cv("assignments", t("Assignments"), t("Your assignments, opening dates, deadlines and live countdowns."))}<div class="g g5 ov" id="aov"></div><div class="tb"><input id="aq" type="search" placeholder="${t("Search assignments…")}" aria-label="${t("Search assignments…")}" value="${esc(asgS.q)}"><select id="ac" aria-label="${t("Course")}"><option value="">${t("All courses")}</option>${cs.map((c) => `<option value="${c.id}" ${c.id == asgS.c ? "selected" : ""}>${esc(cLbl(c.name))}</option>`).join("")}</select><select id="as" aria-label="${t("Status")}"><option value="">${t("All statuses")}</option>${Object.entries(
       ASL,
     )
       .map(
@@ -2267,16 +2314,127 @@ function goLib(id) {
   show("library");
 }
 setInterval(() => {
-  if (P != "assignments" || document.hidden) return;
+  if (document.hidden) return;
+  if (P == "home") return homeAsgSync();
+  if (P != "assignments") return;
   document.querySelectorAll("#ag [data-aid]").forEach((e) => {
     const a = ASGD.find((x) => x.id == e.dataset.aid);
     if (!a) return;
-    if (!e.classList.contains(asgSt(a))) return asgDraw();
+    if (!e.classList.contains("as-" + asgSt(a))) return asgDraw();
+    if (e.classList.contains("urg") != asgUrg(a)) return asgDraw();
     const c = e.querySelector(".cd"),
       x = cdTxt(a);
     if (c && c.textContent != x) c.textContent = x;
   });
 }, 30000);
+/* ---- homepage: Assignment Overview + Courses on the Platform (same data + same filters as the pages they link to) ---- */
+const dfs = (ms) =>
+    new Date(ms).toLocaleDateString(LOC(), {
+      timeZone: TZ,
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    }),
+  hueOf = (n) => {
+    let h = 0;
+    for (const c of n) h = (h * 31 + c.charCodeAt(0)) % 360;
+    return h;
+  },
+  /* not-submitted assignments: overdue first (most recent), then pending (soonest due), then not-yet-open (soonest opening) */
+  asgNeed = () => {
+    const rk = { overdue: 0, pending: 1, upcoming: 2 },
+      D = (a) => Date.parse(a.due),
+      O = (a) => Date.parse(a.opens);
+    return vAsg()
+      .filter((a) => asgSt(a) != "done")
+      .sort((a, b) => {
+        const x = asgSt(a),
+          y = asgSt(b);
+        return x != y
+          ? rk[x] - rk[y]
+          : x == "overdue"
+            ? D(b) - D(a)
+            : x == "upcoming"
+              ? O(a) - O(b) || D(a) - D(b)
+              : D(a) - D(b);
+      })
+      .slice(0, 4);
+  };
+function asgMini(a) {
+  const s = asgSt(a),
+    o = Date.parse(a.opens),
+    d = Date.parse(a.due),
+    cd = cdTxt(a),
+    ug = asgUrg(a);
+  return `<a class="c asg asm as-${s}${ug ? " urg" : ""}" href="#assignments" data-ga="${esc(a.id)}"><div class="ah"><div class="at"><div class="mu cn">${esc(cName(a.course))}</div><b class="atl" dir="auto">${esc(t(a.title))}</b></div><div class="ab">${asBadge(s)}${ug ? asUrgTag() : ""}</div></div><dl class="ad"><div><dt>${t("Opening date")}</dt><dd>${dfs(o)}${a.opensTime ? " · " + tmf(o) : ""}</dd></div><div><dt>${t("Submission deadline")}</dt><dd>${dfs(d)} · ${tmf(d)}</dd></div></dl><p class="cd" ${cd ? "" : "hidden"}>${cd}</p></a>`;
+}
+function homeAsgHtml() {
+  const c = asgCounts(),
+    l = asgNeed(),
+    k = vAsg()
+      .map((a) => a.id + asgSt(a) + asgUrg(a))
+      .join(",");
+  return `<div class="sech" data-k="${esc(k + "|" + l.map((a) => a.id))}"><h3 id="hast">${t("Assignment Overview")}</h3><button class="btn s sm" type="button" data-hp="assignments">${t("View All Assignments")} ${arrI}</button></div><div class="g g5 ov">${asgOv()}</div>${
+    l.length
+      ? `<h4 class="hsub">${t("Needs attention")}</h4><div class="hag">${l.map(asgMini).join("")}</div>`
+      : `<p class="mu hsub">${t(c.total ? "All assignments are submitted 🎉" : "No assignments available for your courses yet.")}</p>`
+  }`;
+}
+function homeAsgDraw() {
+  const e = $("#hasg");
+  if (e) e.innerHTML = homeAsgHtml();
+}
+function homeAsgSync() {
+  const e = $("#hasg"),
+    h = e && e.querySelector(".sech");
+  if (!h) return;
+  const l = asgNeed(),
+    k =
+      vAsg()
+        .map((a) => a.id + asgSt(a) + asgUrg(a))
+        .join(",") +
+      "|" +
+      l.map((a) => a.id);
+  if (h.dataset.k != k) return homeAsgDraw();
+  e.querySelectorAll("[data-ga]").forEach((m) => {
+    const a = ASGD.find((x) => x.id == m.dataset.ga),
+      c = m.querySelector(".cd"),
+      x = a && cdTxt(a);
+    if (c && c.textContent != x) c.textContent = x;
+  });
+}
+function homeCrsHtml() {
+  const vc = vCourses();
+  return `<div class="sech"><h3 id="hcrt">${t("Courses on the Platform")}</h3><button class="btn s sm" type="button" data-hp="library">${t("View All Courses")} ${arrI}</button></div><p class="mu hcs">${t("Lecture files, slides, recordings, references and attendance links for every course.")}</p>${
+    vc.length
+      ? `<div class="hcg">${vc
+          .map((c) => {
+            const tp = c.topics.filter((p) => p.items.length),
+              nr = tp.reduce((n, p) => n + p.items.length, 0),
+              h = hueOf(c.name);
+            return `<article class="c hc" data-gl="${esc(c.id)}"><div class="hch"><span class="hci" aria-hidden="true" style="--h1:${h};--h2:${(h + 40) % 360}">${ip('<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5M9 7.5h7M9 11h5"/>')}</span><div class="hcn"><b class="hct">${esc(cLbl(c.name))}</b><span class="tg">${c.g == "common" ? t("Common") : esc(S.major)}</span></div></div><div class="hcm"><span><b>${tp.length}</b> ${t("Topics")}</span><span><b>${nr}</b> ${t("Resources")}</span></div><button class="btn s sm" type="button" data-gl="${esc(c.id)}">${t("View Course")} ${arrI}</button></article>`;
+          })
+          .join("")}</div>`
+      : `<p class="mu">${t("No courses available yet.")}</p>`
+  }`;
+}
+/* one delegated listener per section: cards reuse goAsg(id) / goLib(id); buttons reuse show() */
+function homeBind() {
+  const go = (e) => {
+    const g = e.target.closest("[data-ga]"),
+      c = e.target.closest("[data-gl]"),
+      p = e.target.closest("[data-hp]");
+    if (g) {
+      e.preventDefault();
+      goAsg(g.dataset.ga);
+    } else if (c) goLib(c.dataset.gl);
+    else if (p) show(p.dataset.hp);
+  };
+  ["#hasg", "#hcrs"].forEach((i) => {
+    const e = $(i);
+    if (e) e.onclick = go;
+  });
+}
 /* library */
 const rMatch = (it, q) =>
   !q ||
@@ -2296,10 +2454,10 @@ function resItem(it) {
     a = it.asg && ASGD.find((x) => x.id == it.asg),
     u = okU(it.url),
     s = a && asgSt(a);
-  return `<li class="rs" style="--tc:${cl}"><span class="ri" aria-hidden="true">${ip((RT[it.type] || RT.other)[2])}</span><div class="rb"><b class="rt" dir="auto">${esc(t(it.title))}</b><div class="rm"><span class="tg ty">${t(lb)}</span>${it.count ? `<span class="tg cn">${t("{0} Videos", it.count)}</span>` : ""}${a ? `<span class="tg ${s}">${t(ASL[s])}</span>` : ""}</div>${it.desc ? `<p class="rd">${esc(t(it.desc))}</p>` : ""}${it.note ? `<p class="rd">${esc(t(it.note))}</p>` : ""}${it.ended ? `<p class="rd">${t("Meeting ended: {0}", new Date(it.ended).toLocaleString(LOC(), { timeZone: TZ, weekday: "long", day: "numeric", month: "long", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true }))}</p>` : ""}${a ? `<p class="rd">${t("Opening date")}: ${dfo(Date.parse(a.opens))} · ${t("Due date")}: ${dfo(Date.parse(a.due))}, ${tmf(Date.parse(a.due))}</p>` : ""}${a && a.instr ? `<p class="rd pl" dir="auto"><b>${t("Instructions")}:</b> ${esc(t(a.instr))}</p>` : ""}</div><div class="ra">${u ? `<a class="btn s sm" href="${esc(u)}" target="_blank" rel="noopener noreferrer">${t("Open link")}</a>` : a ? "" : `<span class="na">${t("No link yet")}</span>`}${a ? `<button class="btn s sm" type="button" data-ga="${esc(a.id)}">${t("View in Assignments")}</button>` : ""}</div></li>`;
+  return `<li class="rs" style="--tc:${cl}"><span class="ri" aria-hidden="true">${ip((RT[it.type] || RT.other)[2])}</span><div class="rb"><b class="rt" dir="auto">${esc(t(it.title))}</b><div class="rm"><span class="tg ty">${t(lb)}</span>${it.count ? `<span class="tg cn">${t("{0} Videos", it.count)}</span>` : ""}${a ? asBadge(s) : ""}</div>${it.desc ? `<p class="rd">${esc(t(it.desc))}</p>` : ""}${it.note ? `<p class="rd">${esc(t(it.note))}</p>` : ""}${it.ended ? `<p class="rd">${t("Meeting ended: {0}", new Date(it.ended).toLocaleString(LOC(), { timeZone: TZ, weekday: "long", day: "numeric", month: "long", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true }))}</p>` : ""}${a ? `<p class="rd">${t("Opening date")}: ${dfo(Date.parse(a.opens))} · ${t("Due date")}: ${dfo(Date.parse(a.due))}, ${tmf(Date.parse(a.due))}</p>` : ""}${a && a.instr ? `<p class="rd pl" dir="auto"><b>${t("Instructions")}:</b> ${esc(t(a.instr))}</p>` : ""}</div><div class="ra">${u ? `<a class="btn s sm" href="${esc(u)}" target="_blank" rel="noopener noreferrer">${t("Open link")}</a>` : a ? "" : `<span class="na">${t("No link yet")}</span>`}${a ? `<button class="btn s sm" type="button" data-ga="${esc(a.id)}">${t("View in Assignments")}</button>` : ""}</div></li>`;
 }
 function crsCard(c, q) {
-  const ct = (t(c.name) + " " + c.name).toLowerCase().includes(q),
+  const ct = cAll(c.name).toLowerCase().includes(q),
     tps = c.topics
       .map((p) => {
         const pm =
@@ -2318,7 +2476,7 @@ function crsCard(c, q) {
   if (!tps.length) return "";
   const nr = tps.reduce((a, x) => a + x.it.length, 0),
     op = libS.open[c.id] !== undefined ? libS.open[c.id] : !!(q || libS.ty);
-  return `<section class="c crs${op ? " open" : ""}" id="crs-${c.id}" tabindex="-1"><h3 class="crh"><button type="button" class="crb" id="cb-${c.id}" aria-expanded="${op}" aria-controls="cp-${c.id}" data-cr="${c.id}">${thumb(t(c.name))}<span class="crt"><b>${esc(t(c.name))}</b><small class="mu">${t("{0} topics · {1} resources", tps.length, nr)}</small></span><svg class="chv" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button></h3><div class="cpn" id="cp-${c.id}" role="region" aria-labelledby="cb-${c.id}" ${op ? "" : "hidden"}><div class="tps">${tps.map(({ p, it }) => `<div class="tp"><h4>${esc(t(p.title))}</h4>${p.desc ? `<p class="rd">${esc(t(p.desc))}</p>` : ""}<ul class="rl">${it.map(resItem).join("")}</ul></div>`).join("")}</div></div></section>`;
+  return `<section class="c crs${op ? " open" : ""}" id="crs-${c.id}" tabindex="-1"><h3 class="crh"><button type="button" class="crb" id="cb-${c.id}" aria-expanded="${op}" aria-controls="cp-${c.id}" data-cr="${c.id}">${thumb(c.name)}<span class="crt"><b>${esc(cLbl(c.name))}</b><small class="mu">${t("{0} topics · {1} resources", tps.length, nr)}</small></span><svg class="chv" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button></h3><div class="cpn" id="cp-${c.id}" role="region" aria-labelledby="cb-${c.id}" ${op ? "" : "hidden"}><div class="tps">${tps.map(({ p, it }) => `<div class="tp"><h4>${esc(t(p.title))}</h4>${p.desc ? `<p class="rd">${esc(t(p.desc))}</p>` : ""}<ul class="rl">${it.map(resItem).join("")}</ul></div>`).join("")}</div></div></section>`;
 }
 function libDraw() {
   const q = libS.q.trim().toLowerCase(),
@@ -2370,7 +2528,7 @@ function library() {
       )
       .join(
         "",
-      )}</div><div class="tb"><input id="lq" type="search" placeholder="${t("Search courses, lectures or resources…")}" aria-label="${t("Search courses, lectures or resources…")}" value="${esc(libS.q)}"><select id="lc" aria-label="${t("Course")}"><option value="">${t("All courses")}</option>${vc.map((c) => `<option value="${c.id}" ${c.id == libS.c ? "selected" : ""}>${esc(t(c.name))}</option>`).join("")}</select><select id="lt" aria-label="${t("Type")}"><option value="">${t("All resource types")}</option>${Object.entries(
+      )}</div><div class="tb"><input id="lq" type="search" placeholder="${t("Search courses, lectures or resources…")}" aria-label="${t("Search courses, lectures or resources…")}" value="${esc(libS.q)}"><select id="lc" aria-label="${t("Course")}"><option value="">${t("All courses")}</option>${vc.map((c) => `<option value="${c.id}" ${c.id == libS.c ? "selected" : ""}>${esc(cLbl(c.name))}</option>`).join("")}</select><select id="lt" aria-label="${t("Type")}"><option value="">${t("All resource types")}</option>${Object.entries(
       RT,
     )
       .map(

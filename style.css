@@ -20,6 +20,21 @@
   --ok: #15803d;
   --bad: #dc2626;
   --wn: #b45309;
+  /* assignment status colours: indicator / badge background / badge text (text >= 6:1 on its background) */
+  --s-done: #16a34a;
+  --s-done-bg: #dcfce7;
+  --s-done-fg: #166534;
+  --s-pending: #2563eb;
+  --s-pending-bg: #dbeafe;
+  --s-pending-fg: #1e40af;
+  --s-overdue: #dc2626;
+  --s-overdue-bg: #fee2e2;
+  --s-overdue-fg: #991b1b;
+  --s-upcoming: #7c3aed;
+  --s-upcoming-bg: #ede9fe;
+  --s-upcoming-fg: #5b21b6;
+  --s-warn-bg: #fef3c7;
+  --s-warn-fg: #92400e;
   --on: #fff;
   --dng: #dc2626;
   --bl: 28px;
@@ -56,6 +71,20 @@
   --ok: #4ade80;
   --bad: #f87171;
   --wn: #fbbf24;
+  --s-done: #4ade80;
+  --s-done-bg: rgba(74, 222, 128, 0.16);
+  --s-done-fg: #86efac;
+  --s-pending: #60a5fa;
+  --s-pending-bg: rgba(96, 165, 250, 0.18);
+  --s-pending-fg: #bfdbfe;
+  --s-overdue: #f87171;
+  --s-overdue-bg: rgba(248, 113, 113, 0.17);
+  --s-overdue-fg: #fecaca;
+  --s-upcoming: #a78bfa;
+  --s-upcoming-bg: rgba(167, 139, 250, 0.2);
+  --s-upcoming-fg: #ddd6fe;
+  --s-warn-bg: rgba(251, 191, 36, 0.18);
+  --s-warn-fg: #fde68a;
   --on: #0f1220;
   --dng: #dc2626;
   --b1: rgba(79, 70, 229, 0.65);
@@ -1468,10 +1497,6 @@ tbody tr:hover td {
   background: var(--ac);
   color: var(--on);
 }
-.tg.open {
-  background: color-mix(in srgb, var(--ok) 16%, transparent);
-  color: var(--ok);
-}
 .rd {
   margin: 4px 0 0;
   font-size: 13px;
@@ -1514,29 +1539,17 @@ tbody tr:hover td {
 .asg {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  border-inline-start: 4px solid var(--sc, var(--ac));
+  gap: 12px;
+  padding: 18px;
+  border-inline-start: 5px solid var(--sc, var(--ac));
+  background-image: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--sc, var(--ac)) 10%, transparent),
+    transparent 60%
+  );
 }
 .asg:focus {
   outline: 0;
-}
-.asg.upcoming {
-  --sc: var(--ac);
-}
-.asg.open {
-  --sc: var(--ok);
-}
-.asg.soon {
-  --sc: var(--wn);
-}
-.asg.overdue {
-  --sc: var(--bad);
-}
-.asg.done {
-  --sc: var(--mu);
-}
-.asg.done .ah h3 {
-  opacity: 0.75;
 }
 .ah {
   display: flex;
@@ -1572,7 +1585,8 @@ tbody tr:hover td {
 .cd {
   margin: 0;
   font-weight: 700;
-  color: var(--sc, var(--ac));
+  font-size: 14px;
+  color: var(--sf, var(--ac));
 }
 .cd[hidden] {
   display: none;
@@ -1834,5 +1848,279 @@ option {
   }
   dialog[open] {
     animation: none;
+  }
+}
+
+/* ===== Assignment status system (Submitted / Pending / Overdue / Not Yet Open) ===== */
+.as-done {
+  --sc: var(--s-done);
+  --sb: var(--s-done-bg);
+  --sf: var(--s-done-fg);
+}
+.as-pending {
+  --sc: var(--s-pending);
+  --sb: var(--s-pending-bg);
+  --sf: var(--s-pending-fg);
+}
+.as-overdue {
+  --sc: var(--s-overdue);
+  --sb: var(--s-overdue-bg);
+  --sf: var(--s-overdue-fg);
+}
+.as-upcoming {
+  --sc: var(--s-upcoming);
+  --sb: var(--s-upcoming-bg);
+  --sf: var(--s-upcoming-fg);
+}
+.tg.as {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px 3px 8px;
+  font-size: 12.5px;
+  background: var(--sb);
+  color: var(--sf);
+  border: 1px solid color-mix(in srgb, var(--sc) 45%, transparent);
+}
+[dir="rtl"] .tg.as {
+  padding: 3px 8px 3px 10px;
+}
+.tg.urgt {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--s-warn-bg);
+  color: var(--s-warn-fg);
+  border: 1px solid color-mix(in srgb, var(--s-warn-fg) 35%, transparent);
+}
+.asi {
+  flex: none;
+}
+.asg.urg {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--sc) 55%, transparent),
+    var(--sh),
+    var(--hi);
+}
+.asg.as-done .ah h3,
+.asg.as-done .atl {
+  opacity: 0.8;
+}
+.at {
+  min-width: 0;
+}
+.asg .cn {
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  overflow-wrap: anywhere;
+}
+.asg h3,
+.asg .atl {
+  margin: 3px 0 0;
+  font-size: 17px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.ab {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex: none;
+}
+/* status tiles (Assignments page + homepage) */
+.g5 {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+.sc {
+  overflow: hidden;
+}
+.sc.as-done::before,
+.sc.as-pending::before,
+.sc.as-overdue::before,
+.sc.as-upcoming::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 4px;
+  background: var(--sc);
+}
+.sc[class*="as-"] .big {
+  color: var(--sf);
+}
+.sc .mu {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.sc .mu .asi {
+  color: var(--sf);
+}
+/* homepage sections */
+.hs {
+  margin-top: 24px;
+}
+.sech {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 2px 12px;
+}
+.sech h3 {
+  margin: 0;
+  font-size: 19px;
+}
+.sech .btn,
+.hc .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.hcs {
+  margin: -4px 2px 14px;
+}
+.hsub {
+  margin: 16px 2px 10px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--mu);
+}
+.hag {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
+  gap: 14px;
+}
+.asm {
+  color: inherit;
+  text-decoration: none;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+.asm:hover {
+  transform: translateY(-2px);
+}
+.asm:focus-visible {
+  outline: 2px solid var(--ac);
+  outline-offset: 3px;
+}
+.asm .ah {
+  flex-wrap: wrap;
+}
+.asm .ad {
+  grid-template-columns: 1fr 1fr;
+}
+.asm .ad dd {
+  font-size: 13px;
+}
+.hcg {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(250px, 100%), 1fr));
+  gap: 14px;
+}
+.hc {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease;
+}
+.hc:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--ac) 50%, var(--rim));
+}
+.hch {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.hci {
+  flex: none;
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  color: #fff;
+  background: linear-gradient(
+    135deg,
+    hsl(var(--h1) 55% 38%),
+    hsl(var(--h2) 60% 30%)
+  );
+  box-shadow: 0 6px 14px -6px hsl(var(--h1) 60% 25% / 0.7);
+}
+.hcn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+}
+.hct {
+  font-size: 15.5px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.hcm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.hcm span {
+  background: var(--gi);
+  border: 1px solid var(--bd);
+  border-radius: 10px;
+  padding: 4px 10px;
+  font-size: 13px;
+  color: var(--mu);
+}
+.hcm b {
+  color: var(--tx);
+  font-size: 14px;
+}
+.hc .btn {
+  margin-top: auto;
+  align-self: flex-start;
+}
+[dir="rtl"] .arr {
+  transform: scaleX(-1);
+}
+@media (max-width: 900px) {
+  .g5 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 560px) {
+  .g5 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .g5 > :first-child {
+    grid-column: 1 / -1;
+  }
+  .asg {
+    padding: 14px;
+  }
+  .ab {
+    align-items: flex-start;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .ah {
+    flex-direction: column;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .asm,
+  .hc {
+    transition: none;
+  }
+  .asm:hover,
+  .hc:hover {
+    transform: none;
   }
 }
