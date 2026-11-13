@@ -572,6 +572,8 @@ window.UNIHUB_AR = {
   "All assignments are submitted 🎉": "تم تسليم جميع التكليفات 🎉",
   "No assignments available for your courses yet.":
     "لا توجد تكليفات لمقرراتك حتى الآن.",
+  "Deadlines Overview": "نظرة عامة على المواعيد",
+  "Your deadlines at a glance.": "حالة مواعيدك في لمحة.",
   "Courses on the Platform": "المقررات على المنصة",
   "View Course": "عرض المقرر",
   "View All Courses": "عرض كل المقررات",

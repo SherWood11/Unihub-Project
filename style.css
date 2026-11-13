@@ -2124,3 +2124,15 @@ option {
     transform: none;
   }
 }
+
+/* performance: every .c card blurs its backdrop twice (card + ::before). The new homepage/assignment cards are many
+   and also move on hover, so they skip the blur (the page background is already soft gradients, so they look the same). */
+.asg,
+.asg::before,
+.sc,
+.sc::before,
+.hc,
+.hc::before {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}

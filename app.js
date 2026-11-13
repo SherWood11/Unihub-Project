@@ -719,12 +719,13 @@ function home() {
   $("#m").innerHTML =
     `${cv("home", t("Welcome to UniHub"), t("Today is {0}. Here is where your studies stand.", fmt(TODAY)))}
 <div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0"><button class="btn" data-add="d">${t("＋ Add deadline")}</button><button class="btn s" data-add="b">${t("＋ Add book")}</button><button class="btn s" data-p="deadlines">${t("All deadlines")}</button><button class="btn s" data-p="academics">${t("Progress")}</button></div>
-<div class="g g4"><div class="c"><div class="big">${V().length - dn}</div><div class="mu">${t("Pending")}</div></div><div class="c"><div class="big" style="color:var(--ok)">${dn}</div><div class="mu">${t("Completed")}</div></div><div class="c"><div class="big" style="color:var(--bad)">${o}</div><div class="mu">${t("Overdue")}</div></div><div class="c"><div class="big" style="color:var(--wn)">${wk}</div><div class="mu">${t("Due in 7 days")}</div></div></div>
+<div class="sech" style="margin-top:20px"><h3>${t("Deadlines Overview")}</h3></div><p class="mu hcs">${t("Your deadlines at a glance.")}</p><div class="g g4"><div class="c"><div class="big">${V().length - dn}</div><div class="mu">${t("Pending")}</div></div><div class="c"><div class="big" style="color:var(--ok)">${dn}</div><div class="mu">${t("Completed")}</div></div><div class="c"><div class="big" style="color:var(--bad)">${o}</div><div class="mu">${t("Overdue")}</div></div><div class="c"><div class="big" style="color:var(--wn)">${wk}</div><div class="mu">${t("Due in 7 days")}</div></div></div>
 <section class="hs" id="hasg" aria-labelledby="hast">${homeAsgHtml()}</section>
 <div class="g g2" style="margin-top:22px">${hw()}<div class="c"><h3>${t("Upcoming deadlines")}</h3>${nx.map(rowDl).join("") || '<p class="mu">' + t("Nothing pending. Nice work!") + "</p>"}</div>
 <div class="c"><h3>${t("Today’s top priorities")}</h3><div class="hint">${t("Write up to three things you most want to finish today.")}</div>${S.top.map((v, i) => `<input data-l="top" data-i="${i}" value="${esc(v)}" placeholder="${t("Priority {0}", i + 1)}" style="margin-bottom:6px">`).join("")}<h3 style="margin-top:14px">${t("Daily goals")}</h3><div class="hint">${t("Small goals for today, e.g. “Review chapter 3”.")}</div>${S.goals.map((v, i) => `<input data-l="goals" data-i="${i}" value="${esc(v)}" placeholder="${t("Goal {0}", i + 1)}" style="margin-bottom:6px">`).join("")}</div>
-<div class="c" style="grid-column:1/-1"><h3>${t("Progress by course")}</h3><div class="g g2" style="gap:0 24px">${cs}</div></div></div>
-<section class="hs" id="hcrs" aria-labelledby="hcrt">${homeCrsHtml()}</section>`;
+</div>
+<section class="hs" id="hcrs" aria-labelledby="hcrt">${homeCrsHtml()}</section>
+<div class="c" style="margin-top:24px"><h3>${t("Progress by course")}</h3><div class="g g2" style="gap:0 24px">${cs}</div></div>`;
   document.querySelectorAll("[data-l]").forEach(
     (e) =>
       (e.oninput = () => {
